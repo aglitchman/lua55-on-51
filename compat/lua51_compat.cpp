@@ -247,11 +247,29 @@ int luaL_loadstring(lua_State* L, const char* s) {
     return luaL_loadbuffer(L, s, strlen(s), s);
 }
 
-// ============== luaL_loadfile (stub) ==============
+// ============== luaL_loadfile ==============
 int luaL_loadfile(lua_State* L, const char* filename) {
-    (void)filename;
-    lua_pushstring(L, "luaL_loadfile not supported in Luau compat layer");
-    return LUA_ERRSYNTAX;
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
+        lua_pushfstring(L, "cannot open %s", filename);
+        return LUA_ERRFILE;
+    }
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char* buf = (char*)malloc(size);
+    if (!buf) {
+        fclose(f);
+        lua_pushstring(L, "out of memory");
+        return LUA_ERRMEM;
+    }
+    size_t nread = fread(buf, 1, size, f);
+    fclose(f);
+    char chunkname[1024];
+    snprintf(chunkname, sizeof(chunkname), "@%s", filename);
+    int status = luaL_loadbuffer(L, buf, nread, chunkname);
+    free(buf);
+    return status;
 }
 
 // ============== luaL_ref / luaL_unref ==============
@@ -288,15 +306,228 @@ const char* luaL_gsub(lua_State* L, const char* s, const char* p, const char* r)
     return NULL;
 }
 
-// ============== luaopen_io / luaopen_package (stubs) ==============
-int luaopen_io(lua_State* L) {
-    lua_createtable(L, 0, 0);
+// ============== luaopen_io (minimal file reading) ==============
+
+static int io_file_read(lua_State* L) {
+    FILE** fp = (FILE**)lua_touserdata(L, 1);
+    if (!fp || !*fp) return luaL_error(L, "attempt to use a closed file");
+    const char* mode = luaL_optstring(L, 2, "*l");
+    if (strcmp(mode, "*l") == 0) {
+        char buf[4096];
+        if (fgets(buf, sizeof(buf), *fp)) {
+            size_t len = strlen(buf);
+            if (len > 0 && buf[len - 1] == '\n') len--;
+            if (len > 0 && buf[len - 1] == '\r') len--;
+            lua_pushlstring(L, buf, len);
+            return 1;
+        }
+        lua_pushnil(L);
+        return 1;
+    } else if (strcmp(mode, "*a") == 0) {
+        luaL_Buffer b;
+        luaL_buffinit(L, &b);
+        char buf[4096];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), *fp)) > 0)
+            luaL_addlstring(&b, buf, n);
+        luaL_pushresult(&b);
+        return 1;
+    } else if (strcmp(mode, "*n") == 0) {
+        double d;
+        if (fscanf(*fp, "%lf", &d) == 1) {
+            lua_pushnumber(L, d);
+            return 1;
+        }
+        lua_pushnil(L);
+        return 1;
+    }
+    return luaL_error(L, "unsupported read mode '%s'", mode);
+}
+
+static int io_file_close(lua_State* L) {
+    FILE** fp = (FILE**)lua_touserdata(L, 1);
+    if (fp && *fp) {
+        fclose(*fp);
+        *fp = NULL;
+    }
+    return 0;
+}
+
+static int io_file_gc(lua_State* L) {
+    return io_file_close(L);
+}
+
+static int io_open(lua_State* L) {
+    const char* filename = luaL_checkstring(L, 1);
+    const char* mode = luaL_optstring(L, 2, "r");
+    FILE* f = fopen(filename, mode);
+    if (!f) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "cannot open %s", filename);
+        return 2;
+    }
+    FILE** fp = (FILE**)lua_newuserdata(L, sizeof(FILE*));
+    *fp = f;
+    if (luaL_newmetatable(L, "io.file")) {
+        lua_pushstring(L, "__index");
+        lua_newtable(L);
+        lua_pushcfunction(L, io_file_read);
+        lua_setfield(L, -2, "read");
+        lua_pushcfunction(L, io_file_close);
+        lua_setfield(L, -2, "close");
+        lua_settable(L, -3);
+        lua_pushcfunction(L, io_file_gc);
+        lua_setfield(L, -2, "__gc");
+    }
+    lua_setmetatable(L, -2);
     return 1;
 }
 
-int luaopen_package(lua_State* L) {
-    lua_createtable(L, 0, 0);
+static int io_lines_iter(lua_State* L) {
+    FILE** fp = (FILE**)lua_touserdata(L, lua_upvalueindex(1));
+    if (!fp || !*fp) return 0;
+    char buf[4096];
+    if (fgets(buf, sizeof(buf), *fp)) {
+        size_t len = strlen(buf);
+        if (len > 0 && buf[len - 1] == '\n') len--;
+        if (len > 0 && buf[len - 1] == '\r') len--;
+        lua_pushlstring(L, buf, len);
+        return 1;
+    }
+    fclose(*fp);
+    *fp = NULL;
+    return 0;
+}
+
+static int io_lines(lua_State* L) {
+    const char* filename = luaL_checkstring(L, 1);
+    FILE* f = fopen(filename, "r");
+    if (!f) return luaL_error(L, "cannot open %s", filename);
+    FILE** fp = (FILE**)lua_newuserdata(L, sizeof(FILE*));
+    *fp = f;
+    lua_pushcclosure(L, io_lines_iter, 1);
     return 1;
+}
+
+int luaopen_io(lua_State* L) {
+    lua_createtable(L, 0, 3);
+    lua_pushcfunction(L, io_open);
+    lua_setfield(L, -2, "open");
+    lua_pushcfunction(L, io_lines);
+    lua_setfield(L, -2, "lines");
+    lua_setglobal(L, "io");
+    return 0;
+}
+
+static int pkg_require(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    // Check package.loaded[name]
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "loaded");
+    lua_getfield(L, -1, name);
+    if (!lua_isnil(L, -1)) {
+        return 1; // already loaded
+    }
+    lua_pop(L, 1); // pop nil
+
+    // Check package.preload[name]
+    lua_getfield(L, -2, "preload"); // package table is at -3
+    lua_getfield(L, -1, name);
+    if (lua_isfunction(L, -1)) {
+        lua_pushstring(L, name);
+        lua_call(L, 1, 1);
+        // Store in package.loaded
+        lua_pushvalue(L, -1);
+        lua_setfield(L, -5, name); // loaded table is at -5
+        return 1;
+    }
+    lua_pop(L, 2); // pop nil + preload table
+
+    // Search package.path
+    lua_getfield(L, -2, "path"); // package table is at -2
+    const char* path = lua_tostring(L, -1);
+    if (!path) {
+        lua_pop(L, 3); // path, loaded, package
+        return luaL_error(L, "package.path is not set");
+    }
+
+    // Convert module dots to path separators
+    char modpath[512];
+    size_t mi = 0;
+    for (const char* p = name; *p && mi < sizeof(modpath) - 1; p++) {
+        modpath[mi++] = (*p == '.') ? '/' : *p;
+    }
+    modpath[mi] = '\0';
+
+    // Try each path template
+    char tried[2048] = "";
+    size_t tried_len = 0;
+    const char* cur = path;
+    while (*cur) {
+        const char* semi = strchr(cur, ';');
+        size_t tlen = semi ? (size_t)(semi - cur) : strlen(cur);
+
+        char filepath[1024];
+        size_t fi = 0;
+        for (size_t i = 0; i < tlen && fi < sizeof(filepath) - 1; i++) {
+            if (cur[i] == '?') {
+                for (size_t j = 0; modpath[j] && fi < sizeof(filepath) - 1; j++)
+                    filepath[fi++] = modpath[j];
+            } else {
+                filepath[fi++] = cur[i];
+            }
+        }
+        filepath[fi] = '\0';
+
+        if (luaL_loadfile(L, filepath) == 0) {
+            lua_call(L, 0, 1);
+            if (lua_isnil(L, -1)) {
+                lua_pop(L, 1);
+                lua_pushboolean(L, 1);
+            }
+            // Store in package.loaded
+            lua_pushvalue(L, -1);
+            lua_setfield(L, -5, name); // loaded table
+            return 1;
+        }
+        lua_pop(L, 1); // pop error message
+
+        // Append to tried list
+        tried_len += snprintf(tried + tried_len, sizeof(tried) - tried_len,
+                              "\n\tno file '%s'", filepath);
+
+        cur = semi ? semi + 1 : cur + tlen;
+    }
+
+    lua_pop(L, 3); // path, loaded, package
+    return luaL_error(L, "module '%s' not found:%s", name, tried);
+}
+
+int luaopen_package(lua_State* L) {
+    // Create package table
+    lua_createtable(L, 0, 4);
+
+    // package.loaded
+    lua_createtable(L, 0, 0);
+    lua_setfield(L, -2, "loaded");
+
+    // package.preload
+    lua_createtable(L, 0, 0);
+    lua_setfield(L, -2, "preload");
+
+    // package.path (default)
+    lua_pushstring(L, "./?.lua;./?/init.lua");
+    lua_setfield(L, -2, "path");
+
+    // Set as global "package"
+    lua_setglobal(L, "package");
+
+    // Register "require" global
+    lua_pushcfunction(L, pkg_require);
+    lua_setglobal(L, "require");
+
+    return 0;
 }
 
 // ================================================================

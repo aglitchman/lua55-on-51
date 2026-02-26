@@ -13,6 +13,16 @@
     else { printf("FAIL\n"); fails++; } \
 } while(0)
 
+static int l_loadstring(lua_State *L) {
+    const char *s = luaL_checkstring(L, 1);
+    if (luaL_loadstring(L, s) != 0) {
+        lua_pushnil(L);
+        lua_insert(L, -2);
+        return 2;
+    }
+    return 1;
+}
+
 static int my_panic(lua_State *L) {
     const char *msg = lua_tostring(L, -1);
     fprintf(stderr, "PANIC: %s\n", msg ? msg : "(null)");
@@ -660,6 +670,47 @@ int main(int argc, char *argv[]) {
     }
     luaL_openlibs(L);
 
+    /* Ensure package/require is available (Luau build needs this) */
+    lua_getglobal(L, "require");
+    if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        luaopen_package(L);
+        luaopen_io(L);
+    } else {
+        lua_pop(L, 1);
+    }
+
+    /* Provide loadstring if missing (Luau doesn't expose it) */
+    lua_getglobal(L, "loadstring");
+    if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        lua_pushcfunction(L, l_loadstring);
+        lua_setglobal(L, "loadstring");
+    } else {
+        lua_pop(L, 1);
+    }
+
+    /* Shim debug.getinfo if missing (Luau uses debug.info instead) */
+    luaL_dostring(L,
+        "if debug and not debug.getinfo and debug.info then\n"
+        "  debug.getinfo = function(level, what)\n"
+        "    what = what or 'nSl'\n"
+        "    level = level + 1\n"
+        "    local info = {}\n"
+        "    if what:find('s') or what:find('S') then\n"
+        "      info.short_src = debug.info(level, 's')\n"
+        "      info.source = info.short_src\n"
+        "    end\n"
+        "    if what:find('l') then\n"
+        "      info.currentline = debug.info(level, 'l')\n"
+        "    end\n"
+        "    if what:find('n') then\n"
+        "      info.name = debug.info(level, 'n')\n"
+        "    end\n"
+        "    return info\n"
+        "  end\n"
+        "end");
+
     printf("Running Lua 5.1 C API tests (Defold subset):\n");
 
     /* State */
@@ -721,7 +772,42 @@ int main(int argc, char *argv[]) {
     /* Standard libs */
     RUN(openlibs);
 
-    printf("\nResults: %d test(s) failed\n", fails);
+    printf("\nResults: %d C API test(s) failed\n", fails);
+
+    /* ===== Lua file tests ===== */
+    printf("\nRunning Lua file tests:\n");
+    {
+        /* Compute base dir from argv[0] (e.g. "example/test_lua51" -> "example/") */
+        char basedir[512] = "";
+        if (argv[0]) {
+            const char *last_sep = strrchr(argv[0], '/');
+            if (last_sep) {
+                size_t len = (size_t)(last_sep - argv[0] + 1);
+                if (len < sizeof(basedir)) {
+                    memcpy(basedir, argv[0], len);
+                    basedir[len] = '\0';
+                }
+            }
+        }
+
+        /* Set package.path with root dir tests/lume */
+        char pathcmd[1024];
+        snprintf(pathcmd, sizeof(pathcmd),
+            "package.path = \"%stests/lume/?.lua;%stests/lume/?/init.lua\"",
+            basedir, basedir);
+        luaL_dostring(L, pathcmd);
+
+        /* Run tests/lume/test.lua */
+        char filepath[512];
+        snprintf(filepath, sizeof(filepath), "%stests/lume/test.lua", basedir);
+
+        printf("  Loading %s\n", filepath);
+        if (luaL_dofile(L, filepath) != 0) {
+            printf("  FAIL: %s\n", lua_tostring(L, -1));
+            lua_pop(L, 1);
+            fails++;
+        }
+    }
 
     lua_close(L);
     return fails > 0 ? 1 : 0;
