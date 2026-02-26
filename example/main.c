@@ -709,26 +709,45 @@ int main(int argc, char *argv[]) {
     }
 
     /* Shim debug.getinfo if missing (Luau uses debug.info instead) */
-    luaL_dostring(L,
-        "if debug and not debug.getinfo and debug.info then\n"
-        "  debug.getinfo = function(level, what)\n"
-        "    what = what or 'nSl'\n"
-        "    level = level + 1\n"
-        "    local info = {}\n"
-        "    if what:find('s') or what:find('S') then\n"
-        "      info.short_src = debug.info(level, 's')\n"
-        "      info.source = info.short_src\n"
-        "    end\n"
-        "    if what:find('l') then\n"
-        "      info.currentline = debug.info(level, 'l')\n"
-        "    end\n"
-        "    if what:find('n') then\n"
-        "      info.name = debug.info(level, 'n')\n"
-        "    end\n"
-        "    return info\n"
-        "  end\n"
-        "end");
+    {
+        /* Try precompiled shim first, fall back to dostring */
+        char shimpath[512] = "";
+        if (argv[0]) {
+            const char *sep = strrchr(argv[0], '/');
+            if (sep) {
+                size_t len = (size_t)(sep - argv[0] + 1);
+                if (len < sizeof(shimpath)) {
+                    memcpy(shimpath, argv[0], len);
+                    shimpath[len] = '\0';
+                }
+            }
+        }
+        strncat(shimpath, "shims/debug_getinfo.luac", sizeof(shimpath) - strlen(shimpath) - 1);
+        if (luaL_dofile(L, shimpath) != 0) {
+            lua_pop(L, 1);
+            luaL_dostring(L,
+                "if debug and not debug.getinfo and debug.info then\n"
+                "  debug.getinfo = function(level, what)\n"
+                "    what = what or 'nSl'\n"
+                "    level = level + 1\n"
+                "    local info = {}\n"
+                "    if what:find('s') or what:find('S') then\n"
+                "      info.short_src = debug.info(level, 's')\n"
+                "      info.source = info.short_src\n"
+                "    end\n"
+                "    if what:find('l') then\n"
+                "      info.currentline = debug.info(level, 'l')\n"
+                "    end\n"
+                "    if what:find('n') then\n"
+                "      info.name = debug.info(level, 'n')\n"
+                "    end\n"
+                "    return info\n"
+                "  end\n"
+                "end");
+        }
+    }
 
+#ifndef LUAU_RUNTIME_ONLY
     printf("Running Lua 5.1 C API tests (Defold subset):\n");
 
     /* State */
@@ -791,6 +810,7 @@ int main(int argc, char *argv[]) {
     RUN(openlibs);
 
     printf("\nResults: %d C API test(s) failed\n", fails);
+#endif
 
     /* ===== Lua file tests ===== */
     printf("\nRunning Lua file tests:\n");
@@ -809,11 +829,14 @@ int main(int argc, char *argv[]) {
         }
 
         /* Set package.path with root dir tests/lume */
-        char pathcmd[1024];
-        snprintf(pathcmd, sizeof(pathcmd),
-            "package.path = \"%stests/lume/?.lua;%stests/lume/?/init.lua\"",
+        char pathval[1024];
+        snprintf(pathval, sizeof(pathval),
+            "%stests/lume/?.lua;%stests/lume/?/init.lua",
             basedir, basedir);
-        luaL_dostring(L, pathcmd);
+        lua_getglobal(L, "package");
+        lua_pushstring(L, pathval);
+        lua_setfield(L, -2, "path");
+        lua_pop(L, 1);
 
         /* Run tests/lume/test.lua */
         char filepath[512];
@@ -827,22 +850,44 @@ int main(int argc, char *argv[]) {
         }
 
         /* json.lua: set package.path and loadfile for relative paths */
-        snprintf(pathcmd, sizeof(pathcmd),
-            "do\n"
-            "  local bd = \"%stests/json.lua/\"\n"
-            "  package.path = bd .. \"?.lua;\" .. bd .. \"bench/?.lua;\" .. bd .. \"bench/?/init.lua\"\n"
-            "  local real_loadfile = loadfile\n"
-            "  local dirs = { bd .. \"test/\", bd .. \"bench/\", bd }\n"
-            "  loadfile = function(name)\n"
-            "    for _, d in ipairs(dirs) do\n"
-            "      local f, err = real_loadfile(d .. name)\n"
-            "      if f then return f, err end\n"
-            "    end\n"
-            "    return nil, \"cannot find '\" .. name .. \"'\"\n"
-            "  end\n"
-            "end",
-            basedir);
-        luaL_dostring(L, pathcmd);
+        snprintf(pathval, sizeof(pathval),
+            "%stests/json.lua/?.lua;%stests/json.lua/bench/?.lua;"
+            "%stests/json.lua/bench/?/init.lua",
+            basedir, basedir, basedir);
+        lua_getglobal(L, "package");
+        lua_pushstring(L, pathval);
+        lua_setfield(L, -2, "path");
+        lua_pop(L, 1);
+
+        /* Override loadfile to search json.lua subdirs */
+        {
+            char jsonbase[512];
+            snprintf(jsonbase, sizeof(jsonbase), "%stests/json.lua/", basedir);
+            lua_pushstring(L, jsonbase);
+            lua_setglobal(L, "_json_basedir");
+
+            char shimpath[512];
+            snprintf(shimpath, sizeof(shimpath), "%sshims/json_loadfile.luac", basedir);
+            if (luaL_dofile(L, shimpath) != 0) {
+                lua_pop(L, 1);
+                char setupcode[2048];
+                snprintf(setupcode, sizeof(setupcode),
+                    "do\n"
+                    "  local bd = \"%stests/json.lua/\"\n"
+                    "  local real_loadfile = loadfile\n"
+                    "  local dirs = { bd .. \"test/\", bd .. \"bench/\", bd }\n"
+                    "  loadfile = function(name)\n"
+                    "    for _, d in ipairs(dirs) do\n"
+                    "      local f, err = real_loadfile(d .. name)\n"
+                    "      if f then return f, err end\n"
+                    "    end\n"
+                    "    return nil, \"cannot find '\" .. name .. \"'\"\n"
+                    "  end\n"
+                    "end",
+                    basedir);
+                luaL_dostring(L, setupcode);
+            }
+        }
 
         /* Run json.lua test */
         snprintf(filepath, sizeof(filepath),

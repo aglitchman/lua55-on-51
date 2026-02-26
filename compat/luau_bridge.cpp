@@ -8,7 +8,9 @@
 
 #include "../luau/VM/include/lua.h"
 #include "../luau/VM/include/lualib.h"
+#ifndef LUAU_RUNTIME_ONLY
 #include "../luau/Compiler/include/luacode.h"
+#endif
 
 // Lua 5.1 lua_Debug layout (from lua51/src/lua.h, LUA_IDSIZE=60)
 #define LUA51_IDSIZE 60
@@ -101,12 +103,14 @@ void luau_bridge_unref(lua_State* L, int ref) {
 }
 
 // ============== luau_compile / luau_load bridges ==============
+#ifndef LUAU_RUNTIME_ONLY
 char* luau_bridge_compile(const char* source, size_t sourceLength, size_t* outSize) {
     lua_CompileOptions opts = {};
     opts.optimizationLevel = 2;
     opts.debugLevel = 1;
     return luau_compile(source, sourceLength, &opts, outSize);
 }
+#endif
 
 int luau_bridge_load(lua_State* L, const char* chunkname, const char* data, size_t size, int env) {
     return luau_load(L, chunkname, data, size, env);

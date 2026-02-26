@@ -1,0 +1,10 @@
+# Object files
+*.o
+
+# Static libraries
+*.a
+
+# Executables
+example/test_lua51
+example/test_luau
+example/test_luau_runtime

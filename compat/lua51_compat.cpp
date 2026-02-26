@@ -58,7 +58,9 @@ int         luau_bridge_optinteger(lua_State* L, int nArg, int def);
 void        luau_bridge_set_panic(lua_State* L, void (*func)(lua_State*, int));
 int         luau_bridge_ref(lua_State* L, int idx);
 void        luau_bridge_unref(lua_State* L, int ref);
+#ifndef LUAU_RUNTIME_ONLY
 char*       luau_bridge_compile(const char* source, size_t sourceLength, size_t* outSize);
+#endif
 int         luau_bridge_load(lua_State* L, const char* chunkname, const char* data, size_t size, int env);
 void        luau_bridge_sethook(lua_State* L, void* hook, int mask, int count);
 void*       luau_bridge_gethook(void);
@@ -231,7 +233,25 @@ lua_Integer luaL_optinteger(lua_State* L, int nArg, lua_Integer def) {
 }
 
 // ============== luaL_loadbuffer / luaL_loadstring ==============
+
+// Luau bytecode version range (first byte of valid bytecode)
+#define LUAU_LBC_VERSION_MIN 3
+#define LUAU_LBC_VERSION_MAX 6
+
+static int is_luau_bytecode(const char* data, size_t sz) {
+    return sz > 0 && (unsigned char)data[0] >= LUAU_LBC_VERSION_MIN
+                   && (unsigned char)data[0] <= LUAU_LBC_VERSION_MAX;
+}
+
 int luaL_loadbuffer(lua_State* L, const char* buff, size_t sz, const char* name) {
+    if (is_luau_bytecode(buff, sz)) {
+        int result = luau_bridge_load(L, name ? name : "=(load)", buff, sz, 0);
+        return result != 0 ? LUA_ERRSYNTAX : 0;
+    }
+#ifdef LUAU_RUNTIME_ONLY
+    lua_pushstring(L, "cannot compile source in runtime-only mode");
+    return LUA_ERRSYNTAX;
+#else
     size_t bytecodeSize = 0;
     char* bytecode = luau_bridge_compile(buff, sz, &bytecodeSize);
     if (!bytecode) {
@@ -241,6 +261,7 @@ int luaL_loadbuffer(lua_State* L, const char* buff, size_t sz, const char* name)
     int result = luau_bridge_load(L, name ? name : "=(load)", bytecode, bytecodeSize, 0);
     free(bytecode);
     return result != 0 ? LUA_ERRSYNTAX : 0;
+#endif
 }
 
 int luaL_loadstring(lua_State* L, const char* s) {
@@ -249,7 +270,26 @@ int luaL_loadstring(lua_State* L, const char* s) {
 
 // ============== luaL_loadfile ==============
 int luaL_loadfile(lua_State* L, const char* filename) {
-    FILE* f = fopen(filename, "rb");
+    FILE* f = NULL;
+    const char* chunkfile = filename; // name used for debug info (keep .lua)
+    char altname[1024];
+    size_t len = strlen(filename);
+
+    // Try .luac first (precompiled bytecode)
+    if (len + 2 < sizeof(altname)) {
+        if (len >= 4 && strcmp(filename + len - 4, ".lua") == 0) {
+            memcpy(altname, filename, len);
+            altname[len] = 'c';
+            altname[len + 1] = '\0';
+        } else {
+            snprintf(altname, sizeof(altname), "%s.luac", filename);
+        }
+        f = fopen(altname, "rb");
+        // Keep original filename for chunk name (debug info shows .lua not .luac)
+    }
+
+    // Fall back to original filename
+    if (!f) f = fopen(filename, "rb");
     if (!f) {
         lua_pushfstring(L, "cannot open %s", filename);
         return LUA_ERRFILE;
