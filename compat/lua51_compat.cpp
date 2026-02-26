@@ -3,34 +3,10 @@
 #include <cstdio>
 #include <cstdarg>
 
-// Include Luau headers directly (before compat macros)
-#include "lua.h"
-#include "lualib.h"
-#include "luacode.h"
-
-// Save original Luau functions before including compat header
-// lua_error (noreturn in Luau)
-static void call_luau_error(lua_State* L) {
-    lua_error(L);
-}
-
-// lua_getinfo (4-arg in Luau)
-static int call_luau_getinfo(lua_State* L, int level, const char* what, lua_Debug* ar) {
-    return lua_getinfo(L, level, what, ar);
-}
-
-// luaL_errorL
-static void call_luau_lerror(lua_State* L, const char* fmt, ...) {
-    // We need to format the message and push it, then call lua_error
-    va_list args;
-    va_start(args, fmt);
-    lua_pushvfstring(L, fmt, args);
-    va_end(args);
-    lua_error(L);
-}
-
-// Now include the compat header (which redefines macros)
-#include "lua51_compat.h"
+// Include Luau headers directly (NOT compat headers)
+#include "../luau/VM/include/lua.h"
+#include "../luau/VM/include/lualib.h"
+#include "../luau/Compiler/include/luacode.h"
 
 // ============== lua_atpanic ==============
 static lua_CFunction s_panic_func = NULL;
@@ -51,7 +27,7 @@ extern "C" lua_CFunction lua51_compat_atpanic(lua_State* L, lua_CFunction panicf
 
 // ============== lua_error ==============
 extern "C" int lua51_compat_error(lua_State* L) {
-    call_luau_error(L);
+    lua_error(L);
     return 0; // unreachable
 }
 
@@ -61,21 +37,25 @@ extern "C" int lua51_compat_lerror(lua_State* L, const char* fmt, ...) {
     va_start(args, fmt);
     lua_pushvfstring(L, fmt, args);
     va_end(args);
-    call_luau_error(L);
+    lua_error(L);
+    return 0; // unreachable
+}
+
+// ============== luaL_argerror ==============
+extern "C" int lua51_compat_argerror(lua_State* L, int numarg, const char* extramsg) {
+    luaL_argerrorL(L, numarg, extramsg);
     return 0; // unreachable
 }
 
 // ============== lua_getstack ==============
-// Store level in lua_Debug.userdata for later use by lua_getinfo
 extern "C" int lua51_compat_getstack(lua_State* L, int level, lua_Debug* ar) {
-    // Verify level is valid by trying to get info
     lua_Debug tmp;
     memset(&tmp, 0, sizeof(tmp));
-    int result = call_luau_getinfo(L, level, "l", &tmp);
+    int result = lua_getinfo(L, level, "l", &tmp);
     if (result == 0)
         return 0;
     memset(ar, 0, sizeof(lua_Debug));
-    // Store level in userdata pointer (cast int to pointer)
+    // Store level in userdata pointer
     ar->userdata = (void*)(intptr_t)level;
     return 1;
 }
@@ -85,7 +65,7 @@ extern "C" int lua51_compat_getinfo(lua_State* L, const char* what, lua_Debug* a
     int level = (int)(intptr_t)ar->userdata;
     lua_Debug tmp;
     memset(&tmp, 0, sizeof(tmp));
-    int result = call_luau_getinfo(L, level, what, &tmp);
+    int result = lua_getinfo(L, level, what, &tmp);
     if (result == 0)
         return 0;
     ar->name = tmp.name;
@@ -98,6 +78,17 @@ extern "C" int lua51_compat_getinfo(lua_State* L, const char* what, lua_Debug* a
     ar->nparams = tmp.nparams;
     ar->isvararg = tmp.isvararg;
     return 1;
+}
+
+// ============== lua_getlocal / lua_setlocal ==============
+extern "C" const char* lua51_compat_getlocal(lua_State* L, const lua_Debug* ar, int n) {
+    int level = (int)(intptr_t)ar->userdata;
+    return lua_getlocal(L, level, n);
+}
+
+extern "C" const char* lua51_compat_setlocal(lua_State* L, const lua_Debug* ar, int n) {
+    int level = (int)(intptr_t)ar->userdata;
+    return lua_setlocal(L, level, n);
 }
 
 // ============== lua_sethook ==============
@@ -152,7 +143,6 @@ extern "C" int lua51_compat_loadbuffer(lua_State* L, const char* buff, size_t sz
     int result = luau_load(L, name ? name : "=(load)", bytecode, bytecodeSize, 0);
     free(bytecode);
     if (result != 0) {
-        // luau_load pushes an error message on failure
         return LUA_ERRSYNTAX;
     }
     return 0;
@@ -187,8 +177,78 @@ extern "C" int lua51_compat_typerror(lua_State* L, int narg, const char* tname) 
     return 0; // unreachable
 }
 
-// ============== Stubs ==============
+// ============== lua_equal / lua_lessthan ==============
+extern "C" int lua51_compat_equal(lua_State* L, int idx1, int idx2) {
+    return lua_rawequal(L, idx1, idx2);
+}
 
+extern "C" int lua51_compat_lessthan(lua_State* L, int idx1, int idx2) {
+    (void)L; (void)idx1; (void)idx2;
+    return 0; // stub
+}
+
+// ============== lua_cpcall ==============
+struct CpcallData {
+    lua_CFunction func;
+    void* ud;
+};
+
+static int cpcall_wrapper(lua_State* L) {
+    CpcallData* data = (CpcallData*)lua_touserdata(L, 1);
+    lua_pushlightuserdata(L, data->ud);
+    lua_replace(L, 1);
+    return data->func(L);
+}
+
+extern "C" int lua51_compat_cpcall(lua_State* L, lua_CFunction func, void* ud) {
+    CpcallData data = {func, ud};
+    lua_pushlightuserdata(L, &data);
+    // Use lua_pushcclosurek directly (Luau's real API)
+    lua_pushcclosurek(L, cpcall_wrapper, NULL, 0, NULL);
+    lua_insert(L, -2);
+    return lua_pcall(L, 1, 0, 0);
+}
+
+// ============== lua_getfenv / lua_setfenv stubs ==============
+extern "C" void lua51_compat_getfenv(lua_State* L, int idx) {
+    (void)idx;
+    lua_pushnil(L); // Luau doesn't have function environments
+}
+
+extern "C" int lua51_compat_setfenv(lua_State* L, int idx) {
+    (void)idx;
+    lua_pop(L, 1); // pop the env table
+    return 0;
+}
+
+// ============== lua_newstate stub ==============
+extern "C" lua_State* lua51_compat_newstate(lua_Alloc f, void* ud) {
+    (void)f; (void)ud;
+    return luaL_newstate(); // Luau ignores custom allocator
+}
+
+// ============== lua_resume / lua_yield stubs ==============
+extern "C" int lua51_compat_resume(lua_State* L, int narg) {
+    return lua_resume(L, NULL, narg);
+}
+
+extern "C" int lua51_compat_yield(lua_State* L, int nresults) {
+    return lua_yield(L, nresults);
+}
+
+// ============== lua_load / lua_dump stubs ==============
+extern "C" int lua51_compat_load(lua_State* L, const char* (*reader)(lua_State*, void*, size_t*), void* data, const char* chunkname) {
+    (void)reader; (void)data; (void)chunkname;
+    lua_pushstring(L, "lua_load not supported in Luau compat layer");
+    return LUA_ERRSYNTAX;
+}
+
+extern "C" int lua51_compat_dump(lua_State* L, int (*writer)(lua_State*, const void*, size_t, void*), void* data) {
+    (void)L; (void)writer; (void)data;
+    return 1; // error
+}
+
+// ============== Other stubs ==============
 extern "C" void lua51_compat_setallocf(lua_State* L, lua_Alloc f, void* ud) {
     (void)L; (void)f; (void)ud;
 }
@@ -215,7 +275,7 @@ extern "C" const char* lua51_compat_gsub(lua_State* L, const char* s, const char
     return NULL;
 }
 
-extern "C" char* lua51_compat_prepbuffer(luaL_Buffer* B) {
+extern "C" char* lua51_compat_prepbuffer(luaL_Strbuf* B) {
     return luaL_prepbuffsize(B, LUA_BUFFERSIZE);
 }
 

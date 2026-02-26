@@ -207,24 +207,37 @@ Create **external** files (DO NOT modify Luau sources):
 
 ## Phase 6: Build Example with Luau + Compat Layer
 
-- Add `compat/lua51_compat.cpp` to the Luau link target in the Makefile
-- Include `compat/lua51_compat.h` from the example (or make it a drop-in replacement header)
-- Build: `make example-luau`
+- Build compat layer as static library: `make compat-lib` (compiles `compat/lua51_compat.cpp` → `compat/libcompat.a`)
+- Build example using only compat include path: `make example-luau` (`-Icompat/include`, links `libcompat.a` + Luau libs)
+- The example's `main.c` includes only `lua.h`, `lauxlib.h`, `lualib.h` — no `#ifdef`, no compat-specific includes
 - Run and verify all tests pass identically to the Lua 5.1 version
 
 ---
+
+## Architecture: Header and Library Separation
+
+**Key principle:** `example/main.c` includes ONLY standard Lua 5.1 header names (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. The build system selects which headers to use via `-I` paths:
+
+- **Lua 5.1 build:** `-Ilua51/src` — uses original Lua 5.1 headers
+- **Luau build:** `-Icompat/include` — uses compat headers that present Lua 5.1 API surface on top of Luau
+
+The compat layer is built as a **static library** (`libcompat.a`) that is linked together with Luau libraries. The compat headers (`compat/include/lua.h`, etc.) include Luau's real headers internally and add macros/declarations for Lua 5.1 compatibility. The compat `.cpp` implementation is compiled separately against Luau headers only.
 
 ## File Structure (Final)
 
 ```
 ext_luau/
 ├── PLAN.md
-├── Makefile              # Root build script
-├── lua51/                # Lua 5.1 sources (untouched)
-├── luau/                 # Luau sources (untouched)
+├── Makefile                  # Root build script
+├── lua51/                    # Lua 5.1 sources (untouched)
+├── luau/                     # Luau sources (untouched)
 ├── compat/
-│   ├── lua51_compat.h    # Lua 5.1 API compatibility declarations
-│   └── lua51_compat.cpp  # Lua 5.1 API compatibility implementations
+│   ├── include/
+│   │   ├── lua.h             # Lua 5.1 API compat header (wraps Luau's lua.h)
+│   │   ├── lauxlib.h         # Lua 5.1 auxlib compat header (wraps Luau's lualib.h)
+│   │   └── lualib.h          # Lua 5.1 standard libs compat header
+│   ├── lua51_compat.cpp      # Compat function implementations
+│   └── libcompat.a           # Built static library
 └── example/
-    └── main.c            # Test app using ALL Lua 5.1 C API functions
+    └── main.c                # Test app using ONLY standard Lua 5.1 headers
 ```

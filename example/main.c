@@ -2,13 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef USE_LUAU_COMPAT
-#include "lua51_compat.h"
-#else
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
-#endif
 
 #define TEST(name) static int test_##name(lua_State *L)
 #define RUN(name) do { \
