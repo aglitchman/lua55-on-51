@@ -58,7 +58,7 @@ compat-lib: luau-lib
 	ar rcs $(COMPAT_LIB) $(COMPAT_DIR)/luau_bridge.o $(COMPAT_DIR)/lua51_compat.o
 
 example-lua51: lua51-lib
-	$(CC) $(CFLAGS_RELEASE) -I$(LUA51_SRC) example/main.c $(LUA51_LIB) -lm -ldl -o example/test_lua51
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(LUA51_LIB) -lm -ldl -o example/test_lua51
 
 # Lua 5.5 compat library
 compat55-lib: lua55-lib

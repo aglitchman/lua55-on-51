@@ -1,64 +1,119 @@
 /*
- * Lua 5.5 to Lua 5.1 API compatibility shim.
+ * Lua 5.5 → Lua 5.1 API compatibility shim.
  *
- * Compiled WITH lua55 headers to wrap lua55_* functions to lua51 API.
- * This allows linking lua51 code against lua55 library.
+ * Compiled as C (-x c) with lua55 headers (-I.).
+ * All exported symbols match the lua51 ABI so that application code
+ * compiled with lua51/src headers can link against this + lua55/liblua.a.
  */
 
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
-/* Define constants that differ from lua55 defaults before including headers */
-#undef LUA_REGISTRYINDEX
-#define LUA_REGISTRYINDEX   (-10000)
-
-/* Include lua55 headers */
+/* Include lua55 headers — LUA_REGISTRYINDEX gets the lua55 value */
 #include "lua55/lua.h"
 #include "lua55/lauxlib.h"
 #include "lua55/lualib.h"
 
-/* Additional constants not in lua55 */
-#define LUA_GLOBALSINDEX    (-10002)
-#define LUA_ENVIRONINDEX    (-10001)
-
-/* Type aliases - map lua55 types to lua51 names */
-typedef lua55_State lua_State;
-typedef lua55_Debug lua_Debug;
-typedef lua55_Number lua_Number;
-typedef lua55_Integer lua_Integer;
-typedef lua55_Unsigned lua_Unsigned;
-typedef lua55_KContext lua_KContext;
-typedef lua55_CFunction lua_CFunction;
-typedef lua55_KFunction lua_KFunction;
-typedef lua55_Reader lua_Reader;
-typedef lua55_Writer lua_Writer;
-typedef lua55_Alloc lua_Alloc;
-typedef lua55_WarnFunction lua_WarnFunction;
-typedef lua55_Hook lua_Hook;
-
-/* lauxlib types */
-typedef lua55L_Buffer luaL_Buffer;
-typedef lua55L_Reg luaL_Reg;
-
-/* lua_upvalueindex macro */
-#define lua_upvalueindex(i) lua55_upvalueindex(i)
-
-/* Undef macros that conflict with function names */
+/* Undefine lua55 compat macros that conflict with our function names */
+#undef lua_equal
+#undef lua_lessthan
 #undef lua_objlen
+#undef lua_strlen
 
-/* Note: lua55 already defines these as macros - no need to redefine:
- * lua_pop, lua_newtable, lua_register, lua_pushcfunction, lua_strlen,
- * lua_isfunction, lua_istable, lua_isnil, lua_isboolean, lua_islightuserdata,
- * lua_isnumber, lua_isstring, lua_isthread, lua_getglobal, lua_setglobal,
- * lua_equal, lua_lessthan, lua_objlen
- */
+/* ── lua 5.1 pseudo-index constants ────────────────────────────── */
+#define LUA51_REGISTRYINDEX  (-10000)
+#define LUA51_ENVIRONINDEX   (-10001)
+#define LUA51_GLOBALSINDEX   (-10002)
 
-#ifdef __cplusplus
-extern "C" {
+/* lua 5.1 GC opcodes that differ from lua55 */
+#define LUA51_GCSETPAUSE     6
+#define LUA51_GCSETSTEPMUL   7
+
+/* ── Type aliases (lua55 → lua51 names) ───────────────────────── */
+typedef lua55_State       lua_State;
+/* lua_Number, lua_Integer, etc. already typedef'd at bottom of lua55/lua.h */
+
+/* ── Translate lua51 pseudo-indices to lua55 equivalents ──────── */
+/* Returns the translated index.  For LUA51_GLOBALSINDEX the caller
+   must handle the case specially (push the global table). */
+#define IS_PSEUDO51(idx) ((idx) <= LUA51_REGISTRYINDEX)
+
+static int xidx(int idx) {
+    if (idx > LUA51_REGISTRYINDEX)      return idx;  /* normal stack index */
+    if (idx == LUA51_REGISTRYINDEX)     return LUA_REGISTRYINDEX;
+    if (idx == LUA51_ENVIRONINDEX)      return LUA_REGISTRYINDEX; /* stub */
+    if (idx == LUA51_GLOBALSINDEX)      return 0;    /* sentinel – caller handles */
+    /* upvalue index: lua51 encodes as (-10002 - i) */
+    return lua55_upvalueindex(LUA51_GLOBALSINDEX - idx);
+}
+
+/* Push the global table onto the stack (lua55 equivalent of LUA_GLOBALSINDEX) */
+static void push_globaltable(lua_State *L) {
+    lua55_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
+}
+
+/* ── lua51_Debug layout ──────────────────────────────────────── */
+/* The application allocates this (smaller) struct; our functions
+   must not write beyond it. */
+struct lua51_Debug {
+    int event;
+    const char *name;
+    const char *namewhat;
+    const char *what;
+    const char *source;
+    int currentline;
+    int nups;
+    int linedefined;
+    int lastlinedefined;
+    char short_src[60];
+    int i_ci;
+};
+
+/* ── lua51_Buffer layout ─────────────────────────────────────── */
+/* LUAL_BUFFERSIZE in lua51 = BUFSIZ (typically 8192).
+   We replicate the exact lua51 struct so macros like luaL_addchar
+   (which access ->p and ->buffer directly) work correctly. */
+#ifndef LUA51_BUFFERSIZE
+#define LUA51_BUFFERSIZE  8192
 #endif
 
-/* State management */
+struct lua51_Buffer {
+    char *p;
+    int   lvl;
+    lua_State *L;
+    char  buffer[LUA51_BUFFERSIZE];
+};
+
+/* ── Keep one lua55_Debug for getstack↔getinfo pairing ───────── */
+static lua55_Debug g_debug55;
+
+/* ── Hook wrapper ────────────────────────────────────────────── */
+typedef void (*lua51_Hook)(lua_State *L, struct lua51_Debug *ar);
+static lua51_Hook g_user_hook;
+
+static void hook_bridge(lua_State *L, lua55_Debug *ar) {
+    if (!g_user_hook) return;
+    struct lua51_Debug ar51;
+    ar51.event        = ar->event;
+    ar51.name         = ar->name;
+    ar51.namewhat     = ar->namewhat;
+    ar51.what         = ar->what;
+    ar51.source       = ar->source;
+    ar51.currentline  = ar->currentline;
+    ar51.nups         = (int)ar->nups;
+    ar51.linedefined  = ar->linedefined;
+    ar51.lastlinedefined = ar->lastlinedefined;
+    memcpy(ar51.short_src, ar->short_src, sizeof(ar51.short_src));
+    ar51.i_ci         = 0;
+    g_user_hook(L, &ar51);
+}
+
+/* ================================================================
+ *  State management
+ * ================================================================ */
+
 lua_State *lua_newstate(lua_Alloc f, void *ud) {
     return lua55_newstate(f, ud, 0);
 }
@@ -83,7 +138,10 @@ void lua_setallocf(lua_State *L, lua_Alloc f, void *ud) {
     lua55_setallocf(L, f, ud);
 }
 
-/* Stack functions */
+/* ================================================================
+ *  Stack manipulation
+ * ================================================================ */
+
 int lua_gettop(lua_State *L) {
     return lua55_gettop(L);
 }
@@ -93,13 +151,14 @@ void lua_settop(lua_State *L, int idx) {
 }
 
 void lua_pushvalue(lua_State *L, int idx) {
-    lua55_pushvalue(L, idx);
+    if (idx == LUA51_GLOBALSINDEX)  { push_globaltable(L); return; }
+    if (idx == LUA51_REGISTRYINDEX) { lua55_pushvalue(L, LUA_REGISTRYINDEX); return; }
+    lua55_pushvalue(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
 }
 
 void lua_remove(lua_State *L, int idx) {
-    int top = lua55_gettop(L);
-    lua55_rotate(L, idx, 1);
-    lua55_settop(L, top - 1);
+    lua55_rotate(L, idx, -1);
+    lua55_settop(L, -2);
 }
 
 void lua_insert(lua_State *L, int idx) {
@@ -107,7 +166,13 @@ void lua_insert(lua_State *L, int idx) {
 }
 
 void lua_replace(lua_State *L, int idx) {
-    lua55_copy(L, -1, idx);
+    if (idx == LUA51_GLOBALSINDEX) {
+        /* set global table from top of stack */
+        lua55_rawseti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
+        return;
+    }
+    int i55 = IS_PSEUDO51(idx) ? xidx(idx) : idx;
+    lua55_copy(L, -1, i55);
     lua55_settop(L, -2);
 }
 
@@ -119,7 +184,114 @@ void lua_xmove(lua_State *from, lua_State *to, int n) {
     lua55_xmove(from, to, n);
 }
 
-/* Push functions */
+/* ================================================================
+ *  Access functions (stack → C)
+ * ================================================================ */
+
+int lua_type(lua_State *L, int idx) {
+    if (idx == LUA51_GLOBALSINDEX)  return LUA_TTABLE;
+    if (idx == LUA51_ENVIRONINDEX)  return LUA_TTABLE;
+    if (idx == LUA51_REGISTRYINDEX) return LUA_TTABLE;
+    return lua55_type(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+const char *lua_typename(lua_State *L, int t) {
+    return lua55_typename(L, t);
+}
+
+lua_Number lua_tonumber(lua_State *L, int idx) {
+    return lua55_tonumberx(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, NULL);
+}
+
+lua_Number lua_tonumberx(lua_State *L, int idx, int *isnum) {
+    return lua55_tonumberx(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, isnum);
+}
+
+lua_Integer lua_tointeger(lua_State *L, int idx) {
+    /* lua51 truncates any number to integer; lua55 returns 0 for non-integers */
+    int i55 = IS_PSEUDO51(idx) ? xidx(idx) : idx;
+    int isnum;
+    lua_Number n = lua55_tonumberx(L, i55, &isnum);
+    if (isnum) return (lua_Integer)n;
+    return 0;
+}
+
+lua_Integer lua_tointegerx(lua_State *L, int idx, int *isnum) {
+    return lua55_tointegerx(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, isnum);
+}
+
+int lua_isnumber(lua_State *L, int idx) {
+    return lua55_isnumber(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+int lua_isstring(lua_State *L, int idx) {
+    return lua55_isstring(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+int lua_iscfunction(lua_State *L, int idx) {
+    return lua55_iscfunction(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+int lua_isuserdata(lua_State *L, int idx) {
+    return lua55_isuserdata(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+int lua_rawequal(lua_State *L, int idx1, int idx2) {
+    return lua55_rawequal(L,
+        IS_PSEUDO51(idx1) ? xidx(idx1) : idx1,
+        IS_PSEUDO51(idx2) ? xidx(idx2) : idx2);
+}
+
+int lua_equal(lua_State *L, int idx1, int idx2) {
+    return lua55_compare(L,
+        IS_PSEUDO51(idx1) ? xidx(idx1) : idx1,
+        IS_PSEUDO51(idx2) ? xidx(idx2) : idx2,
+        LUA_OPEQ);
+}
+
+int lua_lessthan(lua_State *L, int idx1, int idx2) {
+    return lua55_compare(L,
+        IS_PSEUDO51(idx1) ? xidx(idx1) : idx1,
+        IS_PSEUDO51(idx2) ? xidx(idx2) : idx2,
+        LUA_OPLT);
+}
+
+int lua_toboolean(lua_State *L, int idx) {
+    return lua55_toboolean(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+const char *lua_tolstring(lua_State *L, int idx, size_t *len) {
+    return lua55_tolstring(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, len);
+}
+
+size_t lua_rawlen(lua_State *L, int idx) {
+    return (size_t)lua55_rawlen(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+size_t lua_objlen(lua_State *L, int idx) {
+    return (size_t)lua55_rawlen(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+lua_CFunction lua_tocfunction(lua_State *L, int idx) {
+    return lua55_tocfunction(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+void *lua_touserdata(lua_State *L, int idx) {
+    return lua55_touserdata(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+lua_State *lua_tothread(lua_State *L, int idx) {
+    return lua55_tothread(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+const void *lua_topointer(lua_State *L, int idx) {
+    return lua55_topointer(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
+}
+
+/* ================================================================
+ *  Push functions (C → stack)
+ * ================================================================ */
+
 void lua_pushnil(lua_State *L) {
     lua55_pushnil(L);
 }
@@ -168,141 +340,99 @@ int lua_pushthread(lua_State *L) {
     return lua55_pushthread(L);
 }
 
-/* Get functions - lua55 has these as macros, but we need functions too */
-int lua_type(lua_State *L, int idx) {
-    return lua55_type(L, idx);
-}
+/* ================================================================
+ *  Get functions (Lua → stack)
+ * ================================================================ */
 
-const char *lua_typename(lua_State *L, int t) {
-    return lua55_typename(L, t);
-}
-
-lua_Number lua_tonumberx(lua_State *L, int idx, int *isnum) {
-    return lua55_tonumberx(L, idx, isnum);
-}
-
-lua_Number lua_tonumber(lua_State *L, int idx) {
-    return lua55_tonumberx(L, idx, NULL);
-}
-
-lua_Integer lua_tointegerx(lua_State *L, int idx, int *isnum) {
-    return lua55_tointegerx(L, idx, isnum);
-}
-
-lua_Integer lua_tointeger(lua_State *L, int idx) {
-    return lua55_tointegerx(L, idx, NULL);
-}
-
-int lua_isnumber(lua_State *L, int idx) {
-    return lua55_isnumber(L, idx);
-}
-
-int lua_isstring(lua_State *L, int idx) {
-    return lua55_isstring(L, idx);
-}
-
-int lua_iscfunction(lua_State *L, int idx) {
-    return lua55_iscfunction(L, idx);
-}
-
-int lua_isuserdata(lua_State *L, int idx) {
-    return lua55_isuserdata(L, idx);
-}
-
-int lua_rawequal(lua_State *L, int idx1, int idx2) {
-    return lua55_rawequal(L, idx1, idx2);
-}
-
-int lua_toboolean(lua_State *L, int idx) {
-    return lua55_toboolean(L, idx);
-}
-
-const char *lua_tolstring(lua_State *L, int idx, size_t *len) {
-    return lua55_tolstring(L, idx, len);
-}
-
-size_t lua_rawlen(lua_State *L, int idx) {
-    return lua55_rawlen(L, idx);
-}
-
-size_t lua_objlen(lua_State *L, int idx) {
-    return lua55_rawlen(L, idx);
-}
-
-lua_CFunction lua_tocfunction(lua_State *L, int idx) {
-    return lua55_tocfunction(L, idx);
-}
-
-void *lua_touserdata(lua_State *L, int idx) {
-    return lua55_touserdata(L, idx);
-}
-
-lua_State *lua_tothread(lua_State *L, int idx) {
-    return lua55_tothread(L, idx);
-}
-
-const void *lua_topointer(lua_State *L, int idx) {
-    return lua55_topointer(L, idx);
-}
-
-/* Table functions */
 void lua_gettable(lua_State *L, int idx) {
-    lua55_gettable(L, idx);
+    if (idx == LUA51_GLOBALSINDEX) {
+        push_globaltable(L);
+        lua55_insert(L, -2);   /* key is now on top, table below */
+        lua55_gettable(L, -2);
+        lua55_remove(L, -2);   /* remove global table */
+        return;
+    }
+    lua55_gettable(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
 }
 
 void lua_getfield(lua_State *L, int idx, const char *k) {
-    if (idx == LUA_GLOBALSINDEX) {
+    if (idx == LUA51_GLOBALSINDEX) {
         lua55_getglobal(L, k);
-    } else {
-        lua55_getfield(L, idx, k);
+        return;
     }
+    lua55_getfield(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, k);
 }
 
 void lua_rawget(lua_State *L, int idx) {
-    lua55_rawget(L, idx);
+    lua55_rawget(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
 }
 
-void lua_rawgeti(lua_State *L, int idx, lua_Integer n) {
-    lua55_rawgeti(L, idx, n);
+void lua_rawgeti(lua_State *L, int idx, int n) {
+    lua55_rawgeti(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, (lua55_Integer)n);
 }
 
 void lua_createtable(lua_State *L, int narr, int nrec) {
     lua55_createtable(L, narr, nrec);
 }
 
-void lua_newuserdata(lua_State *L, size_t sz) {
-    lua55_newuserdatauv(L, sz, 1);
+void *lua_newuserdata(lua_State *L, size_t sz) {
+    return lua55_newuserdatauv(L, sz, 1);
 }
 
 int lua_getmetatable(lua_State *L, int objindex) {
-    return lua55_getmetatable(L, objindex);
+    return lua55_getmetatable(L, IS_PSEUDO51(objindex) ? xidx(objindex) : objindex);
 }
 
+void lua_getfenv(lua_State *L, int idx) {
+    (void)idx;
+    lua55_pushnil(L);
+}
+
+/* ================================================================
+ *  Set functions (stack → Lua)
+ * ================================================================ */
+
 void lua_settable(lua_State *L, int idx) {
-    lua55_settable(L, idx);
+    if (idx == LUA51_GLOBALSINDEX) {
+        push_globaltable(L);
+        lua55_insert(L, -3);   /* table below key and value */
+        lua55_settable(L, -3);
+        lua55_settop(L, -2);   /* remove global table */
+        return;
+    }
+    lua55_settable(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
 }
 
 void lua_setfield(lua_State *L, int idx, const char *k) {
-    if (idx == LUA_GLOBALSINDEX) {
+    if (idx == LUA51_GLOBALSINDEX) {
         lua55_setglobal(L, k);
-    } else {
-        lua55_setfield(L, idx, k);
+        return;
     }
+    lua55_setfield(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, k);
 }
 
 void lua_rawset(lua_State *L, int idx) {
-    lua55_rawset(L, idx);
+    lua55_rawset(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
 }
 
-void lua_rawseti(lua_State *L, int idx, lua_Integer n) {
-    lua55_rawseti(L, idx, n);
+void lua_rawseti(lua_State *L, int idx, int n) {
+    lua55_rawseti(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, (lua55_Integer)n);
 }
 
 int lua_setmetatable(lua_State *L, int objindex) {
-    return lua55_setmetatable(L, objindex);
+    return lua55_setmetatable(L, IS_PSEUDO51(objindex) ? xidx(objindex) : objindex);
 }
 
-/* Call functions */
+int lua_setfenv(lua_State *L, int idx) {
+    (void)idx;
+    lua55_settop(L, -2);   /* pop the value that would have been the env */
+    return 0;
+}
+
+/* ================================================================
+ *  Call functions
+ * ================================================================ */
+
 void lua_call(lua_State *L, int nargs, int nresults) {
     lua55_callk(L, nargs, nresults, 0, NULL);
 }
@@ -317,17 +447,18 @@ int lua_cpcall(lua_State *L, lua_CFunction func, void *ud) {
     return lua55_pcallk(L, 1, 0, 0, 0, NULL);
 }
 
-/* lua_load - lua55 has mode parameter, pass NULL for default */
 int lua_load(lua_State *L, lua_Reader reader, void *data, const char *chunkname) {
     return lua55_load(L, reader, data, chunkname, NULL);
 }
 
-/* lua_dump - lua55 has strip parameter, pass 0 */
 int lua_dump(lua_State *L, lua_Writer writer, void *data) {
     return lua55_dump(L, writer, data, 0);
 }
 
-/* Coroutine functions */
+/* ================================================================
+ *  Coroutine functions
+ * ================================================================ */
+
 int lua_yield(lua_State *L, int nresults) {
     return lua55_yieldk(L, nresults, 0, NULL);
 }
@@ -345,45 +476,40 @@ int lua_isyieldable(lua_State *L) {
     return lua55_isyieldable(L);
 }
 
-/* GC functions */
-int lua_gc(lua_State *L, int what, ...) {
-    va_list argp;
-    va_start(argp, what);
-    int result = 0;
-    
-    if (what == LUA_GCSTOP || what == LUA_GCRESTART || what == LUA_GCCOLLECT) {
-        result = lua55_gc(L, what);
+/* ================================================================
+ *  GC — lua51 signature: int lua_gc(L, what, data)
+ * ================================================================ */
+
+int lua_gc(lua_State *L, int what, int data) {
+    switch (what) {
+        case LUA_GCSTOP:
+        case LUA_GCRESTART:
+        case LUA_GCCOLLECT:
+            return lua55_gc(L, what);
+        case LUA_GCCOUNT:
+        case LUA_GCCOUNTB:
+            return lua55_gc(L, what);
+        case LUA_GCSTEP:
+            return lua55_gc(L, what, data);
+        case LUA51_GCSETPAUSE:
+            return lua55_gc(L, LUA_GCPARAM, LUA_GCPPAUSE, data, 0);
+        case LUA51_GCSETSTEPMUL:
+            return lua55_gc(L, LUA_GCPARAM, LUA_GCPSTEPMUL, data, 0);
+        default:
+            return lua55_gc(L, what);
     }
-    else if (what == LUA_GCCOUNT || what == LUA_GCCOUNTB || what == LUA_GCSTEP) {
-        int data = va_arg(argp, int);
-        result = lua55_gc(L, what, data);
-    }
-    else if (what == 6) {
-        int data = va_arg(argp, int);
-        result = lua55_gc(L, LUA_GCPARAM, LUA_GCPPAUSE, data);
-    }
-    else if (what == 7) {
-        int data = va_arg(argp, int);
-        result = lua55_gc(L, LUA_GCPARAM, LUA_GCPSTEPMUL, data);
-    }
-    else if (what == LUA_GCISRUNNING || what == LUA_GCGEN || what == LUA_GCINC) {
-        result = lua55_gc(L, what);
-    }
-    else {
-        result = lua55_gc(L, what);
-    }
-    
-    va_end(argp);
-    return result;
 }
 
-/* Error and misc functions */
+/* ================================================================
+ *  Miscellaneous
+ * ================================================================ */
+
 int lua_error(lua_State *L) {
     return lua55_error(L);
 }
 
 int lua_next(lua_State *L, int idx) {
-    return lua55_next(L, idx);
+    return lua55_next(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
 }
 
 void lua_concat(lua_State *L, int n) {
@@ -391,39 +517,70 @@ void lua_concat(lua_State *L, int n) {
 }
 
 void lua_len(lua_State *L, int idx) {
-    lua55_len(L, idx);
+    lua55_len(L, IS_PSEUDO51(idx) ? xidx(idx) : idx);
 }
 
-/* Debug API */
-int lua_getstack(lua_State *L, int level, lua_Debug *ar) {
-    return lua55_getstack(L, level, ar);
+/* lua51 compatibility */
+void lua_setlevel(lua_State *from, lua_State *to) {
+    (void)from; (void)to;
 }
 
-int lua_getinfo(lua_State *L, const char *what, lua_Debug *ar) {
-    return lua55_getinfo(L, what, ar);
+/* ================================================================
+ *  Debug API
+ * ================================================================ */
+
+int lua_getstack(lua_State *L, int level, void *ar_raw) {
+    (void)ar_raw;
+    return lua55_getstack(L, level, &g_debug55);
 }
 
-const char *lua_getlocal(lua_State *L, const lua_Debug *ar, int n) {
-    return lua55_getlocal(L, ar, n);
+int lua_getinfo(lua_State *L, const char *what, void *ar_raw) {
+    struct lua51_Debug *ar51 = (struct lua51_Debug *)ar_raw;
+    int result = lua55_getinfo(L, what, &g_debug55);
+    if (result) {
+        ar51->event           = g_debug55.event;
+        ar51->name            = g_debug55.name;
+        ar51->namewhat        = g_debug55.namewhat;
+        ar51->what            = g_debug55.what;
+        ar51->source          = g_debug55.source;
+        ar51->currentline     = g_debug55.currentline;
+        ar51->nups            = (int)g_debug55.nups;
+        ar51->linedefined     = g_debug55.linedefined;
+        ar51->lastlinedefined = g_debug55.lastlinedefined;
+        memcpy(ar51->short_src, g_debug55.short_src, sizeof(ar51->short_src));
+        ar51->i_ci            = 0;
+    }
+    return result;
 }
 
-const char *lua_setlocal(lua_State *L, const lua_Debug *ar, int n) {
-    return lua55_setlocal(L, ar, n);
+const char *lua_getlocal(lua_State *L, const void *ar, int n) {
+    (void)ar;
+    return lua55_getlocal(L, &g_debug55, n);
+}
+
+const char *lua_setlocal(lua_State *L, const void *ar, int n) {
+    (void)ar;
+    return lua55_setlocal(L, &g_debug55, n);
 }
 
 const char *lua_getupvalue(lua_State *L, int funcindex, int n) {
-    return lua55_getupvalue(L, funcindex, n);
+    return lua55_getupvalue(L, IS_PSEUDO51(funcindex) ? xidx(funcindex) : funcindex, n);
 }
 
 const char *lua_setupvalue(lua_State *L, int funcindex, int n) {
-    return lua55_setupvalue(L, funcindex, n);
+    return lua55_setupvalue(L, IS_PSEUDO51(funcindex) ? xidx(funcindex) : funcindex, n);
 }
 
-void lua_sethook(lua_State *L, lua_Hook func, int mask, int count) {
-    lua55_sethook(L, func, mask, count);
+void lua_sethook(lua_State *L, void *func, int mask, int count) {
+    g_user_hook = (lua51_Hook)func;
+    if (func) {
+        lua55_sethook(L, hook_bridge, mask, count);
+    } else {
+        lua55_sethook(L, NULL, mask, count);
+    }
 }
 
-lua_Hook lua_gethook(lua_State *L) {
+lua55_Hook lua_gethook(lua_State *L) {
     return lua55_gethook(L);
 }
 
@@ -435,18 +592,39 @@ int lua_gethookcount(lua_State *L) {
     return lua55_gethookcount(L);
 }
 
-/* lauxlib functions */
+/* ================================================================
+ *  Auxiliary library  (luaL_*)
+ * ================================================================ */
+
 lua_State *luaL_newstate(void) {
     return lua55L_newstate();
 }
 
 void luaL_register(lua_State *L, const char *libname, const luaL_Reg *l) {
     if (libname) {
-        lua55_createtable(L, 0, 0);
+        /* reuse existing table or create new one */
+        lua55_getglobal(L, libname);
+        if (lua55_type(L, -1) != LUA_TTABLE) {
+            lua55_settop(L, -2);
+            lua55_createtable(L, 0, 0);
+        }
         lua55L_setfuncs(L, l, 0);
+        lua55_pushvalue(L, -1);
         lua55_setglobal(L, libname);
+        /* table remains on stack */
     } else {
         lua55L_setfuncs(L, l, 0);
+    }
+}
+
+void luaI_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup) {
+    if (libname) {
+        lua55_createtable(L, 0, 0);
+        lua55L_setfuncs(L, l, nup);
+        lua55_pushvalue(L, -1);
+        lua55_setglobal(L, libname);
+    } else {
+        lua55L_setfuncs(L, l, nup);
     }
 }
 
@@ -454,28 +632,28 @@ void luaL_openlibs(lua_State *L) {
     lua55L_openlibs(L);
 }
 
-void luaL_checkversion_(lua_State *L, lua_Number ver, size_t sz) {
-    lua55L_checkversion_(L, ver, sz);
-}
-
 int luaL_getmetafield(lua_State *L, int obj, const char *e) {
-    return lua55L_getmetafield(L, obj, e);
+    return lua55L_getmetafield(L, IS_PSEUDO51(obj) ? xidx(obj) : obj, e);
 }
 
 int luaL_callmeta(lua_State *L, int obj, const char *e) {
-    return lua55L_callmeta(L, obj, e);
-}
-
-const char *luaL_typename(lua_State *L, int tp) {
-    return lua55_typename(L, tp);
+    return lua55L_callmeta(L, IS_PSEUDO51(obj) ? xidx(obj) : obj, e);
 }
 
 int luaL_error(lua_State *L, const char *fmt, ...) {
     va_list argp;
     va_start(argp, fmt);
-    int result = lua55L_error(L, fmt, argp);
+    lua55_pushvfstring(L, fmt, argp);
     va_end(argp);
-    return result;
+    return lua55_error(L);
+}
+
+int luaL_typerror(lua_State *L, int narg, const char *tname) {
+    return lua55L_typeerror(L, narg, tname);
+}
+
+int luaL_argerror(lua_State *L, int narg, const char *extramsg) {
+    return lua55L_argerror(L, narg, extramsg);
 }
 
 lua_Integer luaL_checkinteger(lua_State *L, int arg) {
@@ -514,22 +692,6 @@ void luaL_checkany(lua_State *L, int arg) {
     lua55L_checkany(L, arg);
 }
 
-int luaL_argerror(lua_State *L, int narg, const char *extramsg) {
-    return lua55L_argerror(L, narg, extramsg);
-}
-
-void luaL_where(lua_State *L, int lvl) {
-    lua55L_where(L, lvl);
-}
-
-int luaL_ref(lua_State *L, int t) {
-    return lua55L_ref(L, t);
-}
-
-void luaL_unref(lua_State *L, int t, int ref) {
-    lua55L_unref(L, t, ref);
-}
-
 int luaL_newmetatable(lua_State *L, const char *tname) {
     return lua55L_newmetatable(L, tname);
 }
@@ -539,27 +701,31 @@ void luaL_setmetatable(lua_State *L, const char *tname) {
 }
 
 void *luaL_testudata(lua_State *L, int ud, const char *tname) {
-    return lua55L_testudata(L, ud, tname);
+    return lua55L_testudata(L, IS_PSEUDO51(ud) ? xidx(ud) : ud, tname);
 }
 
 void *luaL_checkudata(lua_State *L, int ud, const char *tname) {
-    return lua55L_checkudata(L, ud, tname);
+    return lua55L_checkudata(L, IS_PSEUDO51(ud) ? xidx(ud) : ud, tname);
 }
 
 int luaL_checkoption(lua_State *L, int arg, const char *def, const char *const lst[]) {
     return lua55L_checkoption(L, arg, def, lst);
 }
 
-int luaL_loadfilex(lua_State *L, const char *filename, const char *mode) {
-    return lua55L_loadfilex(L, filename, mode);
+void luaL_where(lua_State *L, int lvl) {
+    lua55L_where(L, lvl);
+}
+
+int luaL_ref(lua_State *L, int t) {
+    return lua55L_ref(L, IS_PSEUDO51(t) ? xidx(t) : t);
+}
+
+void luaL_unref(lua_State *L, int t, int ref) {
+    lua55L_unref(L, IS_PSEUDO51(t) ? xidx(t) : t, ref);
 }
 
 int luaL_loadfile(lua_State *L, const char *filename) {
     return lua55L_loadfilex(L, filename, NULL);
-}
-
-int luaL_loadbufferx(lua_State *L, const char *buff, size_t sz, const char *name, const char *mode) {
-    return lua55L_loadbufferx(L, buff, sz, name, mode);
 }
 
 int luaL_loadbuffer(lua_State *L, const char *buff, size_t sz, const char *name) {
@@ -570,8 +736,9 @@ int luaL_loadstring(lua_State *L, const char *s) {
     return lua55L_loadstring(L, s);
 }
 
-void luaL_gsub(lua_State *L, const char *s, const char *p, const char *r) {
+const char *luaL_gsub(lua_State *L, const char *s, const char *p, const char *r) {
     lua55L_gsub(L, s, p, r);
+    return lua55_tostring(L, -1);
 }
 
 void luaL_setfuncs(lua_State *L, const luaL_Reg *l, int nup) {
@@ -579,7 +746,7 @@ void luaL_setfuncs(lua_State *L, const luaL_Reg *l, int nup) {
 }
 
 int luaL_getsubtable(lua_State *L, int idx, const char *fname) {
-    return lua55L_getsubtable(L, idx, fname);
+    return lua55L_getsubtable(L, IS_PSEUDO51(idx) ? xidx(idx) : idx, fname);
 }
 
 void luaL_traceback(lua_State *L, lua_State *L1, const char *msg, int level) {
@@ -590,82 +757,91 @@ void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf, int g
     lua55L_requiref(L, modname, openf, glb);
 }
 
-/* Buffer functions */
-void luaL_buffinit(lua_State *L, luaL_Buffer *B) {
-    lua55L_buffinit(L, B);
+const char *luaL_findtable(lua_State *L, int idx, const char *fname, int szhint) {
+    (void)szhint;
+    int i55 = IS_PSEUDO51(idx) ? xidx(idx) : idx;
+    if (lua55L_getsubtable(L, i55, fname))
+        return NULL;  /* table already existed */
+    return NULL;      /* created new table */
 }
 
-char *luaL_prepbuffsize(luaL_Buffer *B, size_t sz) {
-    return lua55L_prepbuffsize(B, sz);
+/* ================================================================
+ *  Buffer API — implemented with lua51 struct layout
+ * ================================================================ */
+
+static void buf_flush(struct lua51_Buffer *B) {
+    size_t len = (size_t)(B->p - B->buffer);
+    if (len > 0) {
+        lua55_pushlstring(B->L, B->buffer, len);
+        B->lvl++;
+        B->p = B->buffer;
+    }
 }
 
-void luaL_addlstring(luaL_Buffer *B, const char *s, size_t l) {
-    lua55L_addlstring(B, s, l);
+void luaL_buffinit(lua_State *L, void *B_raw) {
+    struct lua51_Buffer *B = (struct lua51_Buffer *)B_raw;
+    B->p   = B->buffer;
+    B->lvl = 0;
+    B->L   = L;
 }
 
-void luaL_addstring(luaL_Buffer *B, const char *s) {
-    lua55L_addstring(B, s);
+char *luaL_prepbuffer(void *B_raw) {
+    struct lua51_Buffer *B = (struct lua51_Buffer *)B_raw;
+    buf_flush(B);
+    return B->buffer;
 }
 
-void luaL_addvalue(luaL_Buffer *B) {
-    lua55L_addvalue(B);
+void luaL_addlstring(void *B_raw, const char *s, size_t l) {
+    struct lua51_Buffer *B = (struct lua51_Buffer *)B_raw;
+    while (l > 0) {
+        size_t space = (size_t)(LUA51_BUFFERSIZE - (B->p - B->buffer));
+        if (l <= space) {
+            memcpy(B->p, s, l);
+            B->p += l;
+            return;
+        }
+        memcpy(B->p, s, space);
+        B->p += space;
+        s += space;
+        l -= space;
+        buf_flush(B);
+    }
 }
 
-void luaL_pushresult(luaL_Buffer *B) {
-    lua55L_pushresult(B);
+void luaL_addstring(void *B_raw, const char *s) {
+    luaL_addlstring(B_raw, s, strlen(s));
 }
 
-void luaL_pushresultsize(luaL_Buffer *B, size_t sz) {
-    lua55L_pushresultsize(B, sz);
+void luaL_addvalue(void *B_raw) {
+    struct lua51_Buffer *B = (struct lua51_Buffer *)B_raw;
+    size_t vl;
+    const char *s = lua55_tolstring(B->L, -1, &vl);
+    buf_flush(B);
+    /* the value is now on top, above accumulated strings */
+    B->lvl++;
 }
 
-#define luaL_buffinitsize(L,B,sz) luaL_prepbuffsize(B,sz)
-
-char *luaL_prepbuffer(luaL_Buffer *B) {
-    return lua55L_prepbuffsize(B, LUAL_BUFFERSIZE);
+void luaL_pushresult(void *B_raw) {
+    struct lua51_Buffer *B = (struct lua51_Buffer *)B_raw;
+    buf_flush(B);
+    if (B->lvl == 0) {
+        lua55_pushlstring(B->L, "", 0);
+    } else {
+        lua55_concat(B->L, B->lvl);
+    }
 }
 
-/* Standard library open functions - redirect to lua55 versions */
-int luaopen_base(lua_State *L) {
-    return lua55open_base(L);
-}
+/* ================================================================
+ *  Standard library open functions
+ * ================================================================ */
 
-int luaopen_package(lua_State *L) {
-    return lua55open_package(L);
-}
-
-int luaopen_coroutine(lua_State *L) {
-    return lua55open_coroutine(L);
-}
-
-int luaopen_table(lua_State *L) {
-    return lua55open_table(L);
-}
-
-int luaopen_io(lua_State *L) {
-    return lua55open_io(L);
-}
-
-int luaopen_os(lua_State *L) {
-    return lua55open_os(L);
-}
-
-int luaopen_string(lua_State *L) {
-    return lua55open_string(L);
-}
-
-int luaopen_math(lua_State *L) {
-    return lua55open_math(L);
-}
-
-int luaopen_utf8(lua_State *L) {
-    return lua55open_utf8(L);
-}
-
-int luaopen_debug(lua_State *L) {
-    return lua55open_debug(L);
-}
-
-#ifdef __cplusplus
-}
-#endif
+int luaopen_base(lua_State *L)      { return lua55open_base(L); }
+int luaopen_package(lua_State *L)   { return lua55open_package(L); }
+int luaopen_coroutine(lua_State *L) { return lua55open_coroutine(L); }
+int luaopen_table(lua_State *L)     { return lua55open_table(L); }
+int luaopen_io(lua_State *L)        { return lua55open_io(L); }
+int luaopen_os(lua_State *L)        { return lua55open_os(L); }
+int luaopen_string(lua_State *L)    { return lua55open_string(L); }
+int luaopen_math(lua_State *L)      { return lua55open_math(L); }
+int luaopen_utf8(lua_State *L)      { return lua55open_utf8(L); }
+int luaopen_debug(lua_State *L)     { return lua55open_debug(L); }
