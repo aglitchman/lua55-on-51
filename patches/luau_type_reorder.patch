@@ -1,0 +1,45 @@
+--- a/luau/VM/include/lua.h
++++ b/luau/VM/include/lua.h
+@@ -72,11 +72,11 @@
+     LUA_TBOOLEAN = 1, // must be 1 due to l_isfalse
+ 
+     LUA_TLIGHTUSERDATA,
+     LUA_TNUMBER,
+-    LUA_TVECTOR,
+ 
+     LUA_TSTRING, // all types above this must be value types, all types below this must be GC types - see iscollectable
+ 
+     LUA_TTABLE,
+     LUA_TFUNCTION,
+     LUA_TUSERDATA,
+     LUA_TTHREAD,
+     LUA_TBUFFER,
+ 
++    LUA_TVECTOR, // moved after BUFFER to match Lua 5.1 type constants; iscollectable excludes this explicitly
++
+     // values below this line are used in GCObject tags but may never show up in TValue type tags
+     LUA_TPROTO,
+--- a/luau/VM/src/lobject.h
++++ b/luau/VM/src/lobject.h
+@@ -230,1 +230,1 @@
+-#define iscollectable(o) (ttype(o) >= LUA_TSTRING)
++#define iscollectable(o) (ttype(o) >= LUA_TSTRING && ttype(o) != LUA_TVECTOR)
+--- a/luau/VM/src/ltm.cpp
++++ b/luau/VM/src/ltm.cpp
+@@ -15,7 +15,6 @@
+     "nil",
+     "boolean",
+ 
+     "userdata",
+     "number",
+-    "vector",
+ 
+     "string",
+ 
+@@ -24,6 +23,8 @@
+     "userdata",
+     "thread",
+     "buffer",
++
++    "vector",
+ };

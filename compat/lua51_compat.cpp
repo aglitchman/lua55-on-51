@@ -11,10 +11,10 @@
 #include <cstdio>
 #include <cstdarg>
 
-// Include through compat/include/ wrappers to get patched type constants
-#include "include/lua.h"
-#include "include/lauxlib.h"
-#include "include/lualib.h"
+// Lua 5.1 headers — type constants now match Luau after VM patch
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
 
 // ================================================================
 // Forward declarations of Luau functions with unique names.

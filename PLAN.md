@@ -207,8 +207,10 @@ Create **external** files (DO NOT modify Luau sources):
 
 ## Phase 6: Build Example with Luau + Compat Layer
 
-- Build compat layer as static library: `make compat-lib` (compiles `luau_bridge.cpp` + `lua51_compat.cpp` → `libcompat.a`)
-- Build example: `make example-luau` (`-Icompat/include -Ilua51/src`, links `libcompat.a` + Luau libs)
+- Apply Luau VM patches: `./patches/apply_luau_patches.sh` (reorders type enum to match Lua 5.1)
+- Rebuild Luau: `make -C luau clean && make -C luau`
+- Build compat layer: `make compat-lib` (compiles `luau_bridge.cpp` + `lua51_compat.cpp` → `libcompat.a`)
+- Build example: `make example-luau` (`-Ilua51/src`, links `libcompat.a` + Luau libs)
 - `main.c` includes only `lua.h`, `lauxlib.h`, `lualib.h` — no `#ifdef`, no compat-specific includes
 - Run and verify all tests pass identically to the Lua 5.1 version
 
@@ -216,14 +218,14 @@ Create **external** files (DO NOT modify Luau sources):
 
 ## Architecture: Drop-in Replacement via Two-File Compat Library
 
-**Key principle:** `example/main.c` includes ONLY standard Lua 5.1 header names (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. The build system selects which headers/libraries to use:
+**Key principle:** `example/main.c` includes ONLY standard Lua 5.1 header names (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. Both builds use the same headers (`-Ilua51/src`). The only difference is which libraries are linked.
 
 - **Lua 5.1 build:** `-Ilua51/src`, link `liblua.a`
-- **Luau build:** `-Icompat/include -Ilua51/src`, link `libcompat.a` + Luau `.a` files
+- **Luau build:** `-Ilua51/src`, link `libcompat.a` + Luau `.a` files
 
-### Header Layer (compat/include/)
+### Luau VM Patches (required)
 
-Thin wrappers around the real Lua 5.1 headers. The only change is patching type tag constants — Luau inserts `LUA_TVECTOR=4` which shifts `LUA_TSTRING` through `LUA_TTHREAD` by +1. The wrapper `compat/include/lua.h` includes `lua51/src/lua.h` then `#undef`/`#define`s the affected constants. `lauxlib.h` and `lualib.h` just pass through.
+Luau inserts `LUA_TVECTOR` in its type enum, which shifts type constants relative to Lua 5.1. The `patches/` directory contains a script that moves `LUA_TVECTOR` after `LUA_TBUFFER` and fixes `iscollectable`, so NIL=0 through THREAD=8 match Lua 5.1 exactly. See `AGENTS.md` for details.
 
 ### Library Layer (libcompat.a)
 
@@ -231,7 +233,7 @@ Two-file architecture to avoid C++ name mangling conflicts:
 
 1. **`luau_bridge.cpp`** — Compiled with Luau headers. Provides `extern "C"` bridge functions (`luau_bridge_*`) for Luau APIs that have the same name but different C++ signatures from Lua 5.1 (e.g., `lua_getinfo`, `lua_resume`, `lua_pushinteger`).
 
-2. **`lua51_compat.cpp`** — Compiled with Lua 5.1 headers (via compat/include/). Provides all missing or signature-incompatible Lua 5.1 functions with correct C++ name mangling. Calls Luau through:
+2. **`lua51_compat.cpp`** — Compiled with Lua 5.1 headers (`-Ilua51/src`). Provides all missing or signature-incompatible Lua 5.1 functions with correct C++ name mangling. Calls Luau through:
    - Bridge functions for same-name-different-signature APIs
    - Direct forward declarations for Luau-unique APIs (e.g., `lua_tonumberx`, `lua_pushcclosurek`)
 
@@ -242,14 +244,14 @@ Functions with identical C++ signatures in both Lua 5.1 and Luau (e.g., `lua_get
 ```
 ext_luau/
 ├── PLAN.md
+├── AGENTS.md                 # Luau patch documentation
 ├── Makefile                  # Root build script
+├── patches/
+│   ├── apply_luau_patches.sh # Script to patch Luau VM type enum
+│   └── luau_type_reorder.patch # Reference diff
 ├── lua51/                    # Lua 5.1 sources (untouched)
-├── luau/                     # Luau sources (untouched)
+├── luau/                     # Luau sources (patched type enum only)
 ├── compat/
-│   ├── include/
-│   │   ├── lua.h             # Thin wrapper: includes lua51 lua.h + patches type constants
-│   │   ├── lauxlib.h         # Pass-through to lua51 lauxlib.h
-│   │   └── lualib.h          # Pass-through to lua51 lualib.h
 │   ├── luau_bridge.cpp       # Luau-side bridges (compiled with Luau headers)
 │   ├── lua51_compat.cpp      # Lua 5.1 API shim (compiled with Lua 5.1 headers)
 │   └── libcompat.a           # Built static library

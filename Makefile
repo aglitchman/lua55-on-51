@@ -16,7 +16,6 @@ LUAU_LIBS = $(LUAU_VM_LIB) $(LUAU_COMPILER_LIB) $(LUAU_AST_LIB) $(LUAU_COMMON_LI
 
 COMPAT_DIR = compat
 COMPAT_LIB = $(COMPAT_DIR)/libcompat.a
-COMPAT_INCLUDES = -I$(COMPAT_DIR)/include -I$(LUA51_SRC)
 
 .PHONY: all lua51-lib luau-lib compat-lib example-lua51 example-luau clean
 
@@ -36,7 +35,7 @@ compat-lib: luau-lib
 		$(COMPAT_DIR)/luau_bridge.cpp \
 		-o $(COMPAT_DIR)/luau_bridge.o
 	$(CXX) $(CFLAGS) -c \
-		$(COMPAT_INCLUDES) \
+		-I$(LUA51_SRC) \
 		$(COMPAT_DIR)/lua51_compat.cpp \
 		-o $(COMPAT_DIR)/lua51_compat.o
 	ar rcs $(COMPAT_LIB) $(COMPAT_DIR)/luau_bridge.o $(COMPAT_DIR)/lua51_compat.o
@@ -45,7 +44,7 @@ example-lua51: lua51-lib
 	$(CC) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(LUA51_LIB) -lm -ldl -o example/test_lua51
 
 example-luau: compat-lib
-	$(CXX) $(CFLAGS) $(COMPAT_INCLUDES) example/main.c $(COMPAT_LIB) $(LUAU_LIBS) -lm -lpthread -o example/test_luau
+	$(CXX) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(COMPAT_LIB) $(LUAU_LIBS) -lm -lpthread -o example/test_luau
 
 clean:
 	$(MAKE) -C $(LUA51_DIR) clean
