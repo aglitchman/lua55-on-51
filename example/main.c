@@ -13,6 +13,16 @@
     else { printf("FAIL\n"); fails++; } \
 } while(0)
 
+static int l_loadfile(lua_State *L) {
+    const char *filename = luaL_checkstring(L, 1);
+    if (luaL_loadfile(L, filename) != 0) {
+        lua_pushnil(L);
+        lua_insert(L, -2);
+        return 2;
+    }
+    return 1;
+}
+
 static int l_loadstring(lua_State *L) {
     const char *s = luaL_checkstring(L, 1);
     if (luaL_loadstring(L, s) != 0) {
@@ -680,12 +690,20 @@ int main(int argc, char *argv[]) {
         lua_pop(L, 1);
     }
 
-    /* Provide loadstring if missing (Luau doesn't expose it) */
+    /* Provide loadstring/loadfile if missing (Luau doesn't expose them) */
     lua_getglobal(L, "loadstring");
     if (lua_isnil(L, -1)) {
         lua_pop(L, 1);
         lua_pushcfunction(L, l_loadstring);
         lua_setglobal(L, "loadstring");
+    } else {
+        lua_pop(L, 1);
+    }
+    lua_getglobal(L, "loadfile");
+    if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        lua_pushcfunction(L, l_loadfile);
+        lua_setglobal(L, "loadfile");
     } else {
         lua_pop(L, 1);
     }
@@ -802,6 +820,44 @@ int main(int argc, char *argv[]) {
         snprintf(filepath, sizeof(filepath), "%stests/lume/test.lua", basedir);
 
         printf("  Loading %s\n", filepath);
+        if (luaL_dofile(L, filepath) != 0) {
+            printf("  FAIL: %s\n", lua_tostring(L, -1));
+            lua_pop(L, 1);
+            fails++;
+        }
+
+        /* json.lua: set package.path and loadfile for relative paths */
+        snprintf(pathcmd, sizeof(pathcmd),
+            "do\n"
+            "  local bd = \"%stests/json.lua/\"\n"
+            "  package.path = bd .. \"?.lua;\" .. bd .. \"bench/?.lua;\" .. bd .. \"bench/?/init.lua\"\n"
+            "  local real_loadfile = loadfile\n"
+            "  local dirs = { bd .. \"test/\", bd .. \"bench/\", bd }\n"
+            "  loadfile = function(name)\n"
+            "    for _, d in ipairs(dirs) do\n"
+            "      local f, err = real_loadfile(d .. name)\n"
+            "      if f then return f, err end\n"
+            "    end\n"
+            "    return nil, \"cannot find '\" .. name .. \"'\"\n"
+            "  end\n"
+            "end",
+            basedir);
+        luaL_dostring(L, pathcmd);
+
+        /* Run json.lua test */
+        snprintf(filepath, sizeof(filepath),
+            "%stests/json.lua/test/test.lua", basedir);
+        printf("  Loading %s\n", filepath);
+        if (luaL_dofile(L, filepath) != 0) {
+            printf("  FAIL: %s\n", lua_tostring(L, -1));
+            lua_pop(L, 1);
+            fails++;
+        }
+
+        /* Run json.lua bench */
+        printf("\n  Running json.lua benchmarks:\n");
+        snprintf(filepath, sizeof(filepath),
+            "%stests/json.lua/bench/bench_all.lua", basedir);
         if (luaL_dofile(L, filepath) != 0) {
             printf("  FAIL: %s\n", lua_tostring(L, -1));
             lua_pop(L, 1);

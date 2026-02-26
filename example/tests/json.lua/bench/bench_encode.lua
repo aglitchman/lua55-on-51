@@ -38,24 +38,23 @@ local results = {}
 
 for i, name in ipairs(libs) do
   local f = loadfile(name)
-  if not f then 
-    error( "failed to load '" .. name ..  "'; run './get_json_libs.sh'" )
+  if f then
+    local json = f()
+
+    -- Handle special cases
+    if name == "jfjson.lua" then
+      local _encode, _decode = json.encode, json.decode
+      json.encode = function(...) return _encode(json, ...) end
+      json.decode = function(...) return _decode(json, ...) end
+    end
+
+    -- Warmup (for LuaJIT)
+    bench.run(name, 1, function() json.encode(data) end)
+
+    -- Run and push results
+    local res = bench.run(name, 20, function() json.encode(data) end)
+    table.insert(results, res)
   end
-  local json = f()
-
-  -- Handle special cases
-  if name == "jfjson.lua" then
-    local _encode, _decode = json.encode, json.decode
-    json.encode = function(...) return _encode(json, ...) end
-    json.decode = function(...) return _decode(json, ...) end
-  end
-
-  -- Warmup (for LuaJIT)
-  bench.run(name, 1, function() json.encode(data) end)
-
-  -- Run and push results
-  local res = bench.run(name, 10, function() json.encode(data) end)
-  table.insert(results, res)
 end
 
 

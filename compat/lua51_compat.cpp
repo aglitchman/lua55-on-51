@@ -444,6 +444,15 @@ static int pkg_require(lua_State* L) {
     }
     lua_pop(L, 2); // pop nil + preload table
 
+    // Check if module exists as a global table (built-in modules like math, string, etc.)
+    lua_getglobal(L, name);
+    if (!lua_isnil(L, -1)) {
+        lua_pushvalue(L, -1);
+        lua_setfield(L, -4, name); // store in loaded table
+        return 1;
+    }
+    lua_pop(L, 1);
+
     // Search package.path
     lua_getfield(L, -2, "path"); // package table is at -2
     const char* path = lua_tostring(L, -1);
