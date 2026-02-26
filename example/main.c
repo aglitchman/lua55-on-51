@@ -2,9 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef USE_LUAU_COMPAT
+#include "lua51_compat.h"
+#else
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
+#endif
 
 #define TEST(name) static int test_##name(lua_State *L)
 #define RUN(name) do { \
@@ -359,7 +363,9 @@ TEST(getallocf) {
 /* ===== Macros ===== */
 
 TEST(macros) {
+    lua_pushstring(L, "test");
     lua_strlen(L, -1);
+    lua_pop(L, 1);
 
     lua_register(L, "my_cfunc2", my_cfunction2);
     lua_getglobal(L, "my_cfunc2");

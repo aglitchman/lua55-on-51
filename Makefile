@@ -30,7 +30,7 @@ example-lua51: lua51-lib
 	$(CC) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(LUA51_LIB) -lm -ldl -o example/test_lua51
 
 example-luau: luau-lib
-	$(CXX) $(CFLAGS) $(LUAU_INCLUDES) -Icompat example/main.c compat/lua51_compat.cpp $(LUAU_LIBS) -lm -lpthread -o example/test_luau
+	$(CXX) $(CFLAGS) -DUSE_LUAU_COMPAT $(LUAU_INCLUDES) -I$(LUAU_DIR)/Compiler/include -Icompat example/main.c compat/lua51_compat.cpp $(LUAU_LIBS) -lm -lpthread -o example/test_luau
 
 clean:
 	$(MAKE) -C $(LUA51_DIR) clean
