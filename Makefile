@@ -7,6 +7,10 @@ LUA51_DIR = lua51
 LUA51_SRC = $(LUA51_DIR)/src
 LUA51_LIB = $(LUA51_SRC)/liblua.a
 
+LUA55_DIR = lua55
+LUA55_LIB = $(LUA55_DIR)/liblua.a
+LUA55_CLI = $(LUA55_DIR)/lua
+
 LUAU_DIR = luau
 LUAU_BUILD = $(LUAU_DIR)/build/release
 LUAU_VM_LIB = $(LUAU_BUILD)/libluauvm.a
@@ -22,13 +26,19 @@ COMPAT_DIR = compat
 COMPAT_LIB = $(COMPAT_DIR)/libcompat.a
 COMPAT_RUNTIME_LIB = $(COMPAT_DIR)/libcompat_runtime.a
 
-.PHONY: all lua51-lib luau-lib compat-lib compat-runtime-lib \
+.PHONY: all lua51-lib lua55-lib lua55 luau-lib compat-lib compat-runtime-lib \
         example-lua51 example-luau example-luau-runtime precompile clean
 
 all: example-lua51 example-luau precompile example-luau-runtime
 
 lua51-lib:
 	$(MAKE) -C $(LUA51_SRC) a MYCFLAGS="-DLUA_USE_LINUX"
+
+lua55-lib:
+	$(MAKE) -C $(LUA55_DIR) a MYCFLAGS="-DLUA_USE_LINUX"
+
+lua55: lua55-lib
+	$(MAKE) -C $(LUA55_DIR) lua
 
 luau-lib:
 	$(MAKE) -C $(LUAU_DIR) config=release
@@ -83,7 +93,8 @@ example-luau-runtime: compat-runtime-lib precompile
 
 clean:
 	$(MAKE) -C $(LUA51_DIR) clean
+	$(MAKE) -C $(LUA55_DIR) clean
 	$(MAKE) -C $(LUAU_DIR) clean
 	rm -f $(COMPAT_DIR)/*.o $(COMPAT_LIB) $(COMPAT_RUNTIME_LIB)
-	rm -f example/test_lua51 example/test_luau example/test_luau_runtime
+	rm -f example/test_lua51 example/test_lua51 example/test_luau example/test_luau_runtime
 	find example/tests example/shims -name '*.luac' -delete 2>/dev/null || true

@@ -63,8 +63,8 @@ static void setsignal (int sig, void (*handler)(int)) {
 */
 static void lstop (lua_State *L, lua_Debug *ar) {
   (void)ar;  /* unused arg. */
-  lua_sethook(L, NULL, 0, 0);  /* reset hook */
-  luaL_error(L, "interrupted!");
+  lua55_sethook(L, NULL, 0, 0);  /* reset hook */
+  lua55L_error(L, "interrupted!");
 }
 
 
@@ -77,7 +77,7 @@ static void lstop (lua_State *L, lua_Debug *ar) {
 static void laction (int i) {
   int flag = LUA_MASKCALL | LUA_MASKRET | LUA_MASKLINE | LUA_MASKCOUNT;
   setsignal(i, SIG_DFL); /* if another SIGINT happens, terminate process */
-  lua_sethook(globalL, lstop, flag, 1);
+  lua55_sethook(globalL, lstop, flag, 1);
 }
 
 
@@ -120,11 +120,11 @@ static void l_message (const char *pname, const char *msg) {
 */
 static int report (lua_State *L, int status) {
   if (status != LUA_OK) {
-    const char *msg = lua_tostring(L, -1);
+    const char *msg = lua55_tostring(L, -1);
     if (msg == NULL)
       msg = "(error message not a string)";
     l_message(progname, msg);
-    lua_pop(L, 1);  /* remove message */
+    lua55_pop(L, 1);  /* remove message */
   }
   return status;
 }
@@ -134,34 +134,34 @@ static int report (lua_State *L, int status) {
 ** Message handler used to run all chunks
 */
 static int msghandler (lua_State *L) {
-  const char *msg = lua_tostring(L, 1);
+  const char *msg = lua55_tostring(L, 1);
   if (msg == NULL) {  /* is error object not a string? */
-    if (luaL_callmeta(L, 1, "__tostring") &&  /* does it have a metamethod */
-        lua_type(L, -1) == LUA_TSTRING)  /* that produces a string? */
+    if (lua55L_callmeta(L, 1, "__tostring") &&  /* does it have a metamethod */
+        lua55_type(L, -1) == LUA_TSTRING)  /* that produces a string? */
       return 1;  /* that is the message */
     else
-      msg = lua_pushfstring(L, "(error object is a %s value)",
-                               luaL_typename(L, 1));
+      msg = lua55_pushfstring(L, "(error object is a %s value)",
+                               lua55L_typename(L, 1));
   }
-  luaL_traceback(L, L, msg, 1);  /* append a standard traceback */
+  lua55L_traceback(L, L, msg, 1);  /* append a standard traceback */
   return 1;  /* return the traceback */
 }
 
 
 /*
-** Interface to 'lua_pcall', which sets appropriate message function
+** Interface to 'lua55_pcall', which sets appropriate message function
 ** and C-signal handler. Used to run all chunks.
 */
 static int docall (lua_State *L, int narg, int nres) {
   int status;
-  int base = lua_gettop(L) - narg;  /* function index */
-  lua_pushcfunction(L, msghandler);  /* push message handler */
-  lua_insert(L, base);  /* put it under function and args */
+  int base = lua55_gettop(L) - narg;  /* function index */
+  lua55_pushcfunction(L, msghandler);  /* push message handler */
+  lua55_insert(L, base);  /* put it under function and args */
   globalL = L;  /* to be available to 'laction' */
   setsignal(SIGINT, laction);  /* set C-signal handler */
-  status = lua_pcall(L, narg, nres, base);
+  status = lua55_pcall(L, narg, nres, base);
   setsignal(SIGINT, SIG_DFL); /* reset C-signal handler */
-  lua_remove(L, base);  /* remove message handler from the stack */
+  lua55_remove(L, base);  /* remove message handler from the stack */
   return status;
 }
 
@@ -185,12 +185,12 @@ static void print_version (void) {
 static void createargtable (lua_State *L, char **argv, int argc, int script) {
   int i, narg;
   narg = argc - (script + 1);  /* number of positive indices */
-  lua_createtable(L, narg, script + 1);
+  lua55_createtable(L, narg, script + 1);
   for (i = 0; i < argc; i++) {
-    lua_pushstring(L, argv[i]);
-    lua_rawseti(L, -2, i - script);
+    lua55_pushstring(L, argv[i]);
+    lua55_rawseti(L, -2, i - script);
   }
-  lua_setglobal(L, "arg");
+  lua55_setglobal(L, "arg");
 }
 
 
@@ -201,12 +201,12 @@ static int dochunk (lua_State *L, int status) {
 
 
 static int dofile (lua_State *L, const char *name) {
-  return dochunk(L, luaL_loadfile(L, name));
+  return dochunk(L, lua55L_loadfile(L, name));
 }
 
 
 static int dostring (lua_State *L, const char *s, const char *name) {
-  return dochunk(L, luaL_loadbuffer(L, s, strlen(s), name));
+  return dochunk(L, lua55L_loadbuffer(L, s, strlen(s), name));
 }
 
 
@@ -227,13 +227,13 @@ static int dolibrary (lua_State *L, char *globname) {
     *modname = '\0';  /* global name ends here */
     modname++;  /* module name starts after the '=' */
   }
-  lua_getglobal(L, "require");
-  lua_pushstring(L, modname);
+  lua55_getglobal(L, "require");
+  lua55_pushstring(L, modname);
   status = docall(L, 1, 1);  /* call 'require(modname)' */
   if (status == LUA_OK) {
     if (suffix != NULL)  /* is there a suffix mark? */
       *suffix = '\0';  /* remove suffix from global name */
-    lua_setglobal(L, globname);  /* globname = require(modname) */
+    lua55_setglobal(L, globname);  /* globname = require(modname) */
   }
   return report(L, status);
 }
@@ -244,13 +244,13 @@ static int dolibrary (lua_State *L, char *globname) {
 */
 static int pushargs (lua_State *L) {
   int i, n;
-  if (lua_getglobal(L, "arg") != LUA_TTABLE)
-    luaL_error(L, "'arg' is not a table");
-  n = (int)luaL_len(L, -1);
-  luaL_checkstack(L, n + 3, "too many arguments to script");
+  if (lua55_getglobal(L, "arg") != LUA_TTABLE)
+    lua55L_error(L, "'arg' is not a table");
+  n = (int)lua55L_len(L, -1);
+  lua55L_checkstack(L, n + 3, "too many arguments to script");
   for (i = 1; i <= n; i++)
-    lua_rawgeti(L, -i, i);
-  lua_remove(L, -i);  /* remove table from the stack */
+    lua55_rawgeti(L, -i, i);
+  lua55_remove(L, -i);  /* remove table from the stack */
   return n;
 }
 
@@ -260,7 +260,7 @@ static int handle_script (lua_State *L, char **argv) {
   const char *fname = argv[0];
   if (strcmp(fname, "-") == 0 && strcmp(argv[-1], "--") != 0)
     fname = NULL;  /* stdin */
-  status = luaL_loadfile(L, fname);
+  status = lua55L_loadfile(L, fname);
   if (status == LUA_OK) {
     int n = pushargs(L);  /* push arguments to script */
     status = docall(L, n, LUA_MULTRET);
@@ -349,7 +349,7 @@ static int collectargs (char **argv, int *first) {
 */
 static int runargs (lua_State *L, char **argv, int n) {
   int i;
-  lua_warning(L, "@off", 0);  /* by default, Lua stand-alone has warnings off */
+  lua55_warning(L, "@off", 0);  /* by default, Lua stand-alone has warnings off */
   for (i = 1; i < n; i++) {
     int option = argv[i][1];
     lua_assert(argv[i][0] == '-');  /* already checked */
@@ -366,7 +366,7 @@ static int runargs (lua_State *L, char **argv, int n) {
         break;
       }
       case 'W':
-        lua_warning(L, "@on", 0);  /* warnings on */
+        lua55_warning(L, "@on", 0);  /* warnings on */
         break;
     }
   }
@@ -500,7 +500,7 @@ static void lua_freeline (char *line) {
 static void lua_initreadline (lua_State *L) {
   void *lib = dlopen(LUA_READLINELIB, RTLD_NOW | RTLD_LOCAL);
   if (lib == NULL)
-    lua_warning(L, "library '" LUA_READLINELIB "' not found", 0);
+    lua55_warning(L, "library '" LUA_READLINELIB "' not found", 0);
   else {
     const char **name = cast(const char**, dlsym(lib, "rl_readline_name"));
     if (name != NULL)
@@ -508,7 +508,7 @@ static void lua_initreadline (lua_State *L) {
     l_readline = cast(l_readlineT, cast_func(dlsym(lib, "readline")));
     l_addhist = cast(l_addhistT, cast_func(dlsym(lib, "add_history")));
     if (l_readline == NULL)
-      lua_warning(L, "unable to load 'readline'", 0);
+      lua55_warning(L, "unable to load 'readline'", 0);
   }
 }
 
@@ -531,11 +531,11 @@ static void lua_initreadline (lua_State *L) {
 ** it anchored.
 */
 static const char *get_prompt (lua_State *L, int firstline) {
-  if (lua_getglobal(L, firstline ? "_PROMPT" : "_PROMPT2") == LUA_TNIL)
+  if (lua55_getglobal(L, firstline ? "_PROMPT" : "_PROMPT2") == LUA_TNIL)
     return (firstline ? LUA_PROMPT : LUA_PROMPT2);  /* use the default */
   else {  /* apply 'tostring' over the value */
-    const char *p = luaL_tolstring(L, -1, NULL);
-    lua_remove(L, -2);  /* remove original value */
+    const char *p = lua55L_tolstring(L, -1, NULL);
+    lua55_remove(L, -2);  /* remove original value */
     return p;
   }
 }
@@ -553,7 +553,7 @@ static const char *get_prompt (lua_State *L, int firstline) {
 static int incomplete (lua_State *L, int status) {
   if (status == LUA_ERRSYNTAX) {
     size_t lmsg;
-    const char *msg = lua_tolstring(L, -1, &lmsg);
+    const char *msg = lua55_tolstring(L, -1, &lmsg);
     if (lmsg >= marklen && strcmp(msg + lmsg - marklen, EOFMARK) == 0)
       return 1;
   }
@@ -569,13 +569,13 @@ static int pushline (lua_State *L, int firstline) {
   size_t l;
   const char *prmt = get_prompt(L, firstline);
   char *b = lua_readline(buffer, prmt);
-  lua_pop(L, 1);  /* remove prompt */
+  lua55_pop(L, 1);  /* remove prompt */
   if (b == NULL)
     return 0;  /* no input */
   l = strlen(b);
   if (l > 0 && b[l-1] == '\n')  /* line ends with newline? */
     b[--l] = '\0';  /* remove it */
-  lua_pushlstring(L, b, l);
+  lua55_pushlstring(L, b, l);
   lua_freeline(b);
   return 1;
 }
@@ -586,13 +586,13 @@ static int pushline (lua_State *L, int firstline) {
 ** has either compiled chunk or original line (if compilation failed).
 */
 static int addreturn (lua_State *L) {
-  const char *line = lua_tostring(L, -1);  /* original line */
-  const char *retline = lua_pushfstring(L, "return %s;", line);
-  int status = luaL_loadbuffer(L, retline, strlen(retline), "=stdin");
+  const char *line = lua55_tostring(L, -1);  /* original line */
+  const char *retline = lua55_pushfstring(L, "return %s;", line);
+  int status = lua55L_loadbuffer(L, retline, strlen(retline), "=stdin");
   if (status == LUA_OK)
-    lua_remove(L, -2);  /* remove modified line */
+    lua55_remove(L, -2);  /* remove modified line */
   else
-    lua_pop(L, 2);  /* pop result from 'luaL_loadbuffer' and modified line */
+    lua55_pop(L, 2);  /* pop result from 'lua55L_loadbuffer' and modified line */
   return status;
 }
 
@@ -616,17 +616,17 @@ static void checklocal (const char *line) {
 */
 static int multiline (lua_State *L) {
   size_t len;
-  const char *line = lua_tolstring(L, 1, &len);  /* get first line */
+  const char *line = lua55_tolstring(L, 1, &len);  /* get first line */
   checklocal(line);
   for (;;) {  /* repeat until gets a complete statement */
-    int status = luaL_loadbuffer(L, line, len, "=stdin");  /* try it */
+    int status = lua55L_loadbuffer(L, line, len, "=stdin");  /* try it */
     if (!incomplete(L, status) || !pushline(L, 0))
       return status;  /* should not or cannot try to add continuation line */
-    lua_remove(L, -2);  /* remove error message (from incomplete line) */
-    lua_pushliteral(L, "\n");  /* add newline... */
-    lua_insert(L, -2);  /* ...between the two lines */
-    lua_concat(L, 3);  /* join them */
-    line = lua_tolstring(L, 1, &len);  /* get what is has */
+    lua55_remove(L, -2);  /* remove error message (from incomplete line) */
+    lua55_pushliteral(L, "\n");  /* add newline... */
+    lua55_insert(L, -2);  /* ...between the two lines */
+    lua55_concat(L, 3);  /* join them */
+    line = lua55_tolstring(L, 1, &len);  /* get what is has */
   }
 }
 
@@ -640,16 +640,16 @@ static int multiline (lua_State *L) {
 static int loadline (lua_State *L) {
   const char *line;
   int status;
-  lua_settop(L, 0);
+  lua55_settop(L, 0);
   if (!pushline(L, 1))
     return -1;  /* no input */
   if ((status = addreturn(L)) != LUA_OK)  /* 'return ...' did not work? */
     status = multiline(L);  /* try as command, maybe with continuation lines */
-  line = lua_tostring(L, 1);
+  line = lua55_tostring(L, 1);
   if (line[0] != '\0')  /* non empty? */
     lua_saveline(line);  /* keep history */
-  lua_remove(L, 1);  /* remove line from the stack */
-  lua_assert(lua_gettop(L) == 1);
+  lua55_remove(L, 1);  /* remove line from the stack */
+  lua_assert(lua55_gettop(L) == 1);
   return status;
 }
 
@@ -658,14 +658,14 @@ static int loadline (lua_State *L) {
 ** Prints (calling the Lua 'print' function) any values on the stack
 */
 static void l_print (lua_State *L) {
-  int n = lua_gettop(L);
+  int n = lua55_gettop(L);
   if (n > 0) {  /* any result to be printed? */
-    luaL_checkstack(L, LUA_MINSTACK, "too many results to print");
-    lua_getglobal(L, "print");
-    lua_insert(L, 1);
-    if (lua_pcall(L, n, 0, 0) != LUA_OK)
-      l_message(progname, lua_pushfstring(L, "error calling 'print' (%s)",
-                                             lua_tostring(L, -1)));
+    lua55L_checkstack(L, LUA_MINSTACK, "too many results to print");
+    lua55_getglobal(L, "print");
+    lua55_insert(L, 1);
+    if (lua55_pcall(L, n, 0, 0) != LUA_OK)
+      l_message(progname, lua55_pushfstring(L, "error calling 'print' (%s)",
+                                             lua55_tostring(L, -1)));
   }
 }
 
@@ -685,7 +685,7 @@ static void doREPL (lua_State *L) {
     if (status == LUA_OK) l_print(L);
     else report(L, status);
   }
-  lua_settop(L, 0);  /* clear stack */
+  lua55_settop(L, 0);  /* clear stack */
   lua_writeline();
   progname = oldprogname;
 }
@@ -693,7 +693,7 @@ static void doREPL (lua_State *L) {
 /* }================================================================== */
 
 #if !defined(luai_openlibs)
-#define luai_openlibs(L)	luaL_openselectedlibs(L, ~0, 0)
+#define luai_openlibs(L)	lua55L_openselectedlibs(L, ~0, 0)
 #endif
 
 
@@ -702,12 +702,12 @@ static void doREPL (lua_State *L) {
 ** Reads the options and handles them all.
 */
 static int pmain (lua_State *L) {
-  int argc = (int)lua_tointeger(L, 1);
-  char **argv = (char **)lua_touserdata(L, 2);
+  int argc = (int)lua55_tointeger(L, 1);
+  char **argv = (char **)lua55_touserdata(L, 2);
   int script;
   int args = collectargs(argv, &script);
   int optlim = (script > 0) ? script : argc; /* first argv not an option */
-  luaL_checkversion(L);  /* check that interpreter has correct version */
+  lua55L_checkversion(L);  /* check that interpreter has correct version */
   if (args == has_error) {  /* bad arg? */
     print_usage(argv[script]);  /* 'script' has index of bad arg. */
     return 0;
@@ -715,13 +715,13 @@ static int pmain (lua_State *L) {
   if (args & has_v)  /* option '-v'? */
     print_version();
   if (args & has_E) {  /* option '-E'? */
-    lua_pushboolean(L, 1);  /* signal for libraries to ignore env. vars. */
-    lua_setfield(L, LUA_REGISTRYINDEX, "LUA_NOENV");
+    lua55_pushboolean(L, 1);  /* signal for libraries to ignore env. vars. */
+    lua55_setfield(L, LUA_REGISTRYINDEX, "LUA_NOENV");
   }
   luai_openlibs(L);  /* open standard libraries */
   createargtable(L, argv, argc, script);  /* create table 'arg' */
-  lua_gc(L, LUA_GCRESTART);  /* start GC... */
-  lua_gc(L, LUA_GCGEN);  /* ...in generational mode */
+  lua55_gc(L, LUA_GCRESTART);  /* start GC... */
+  lua55_gc(L, LUA_GCGEN);  /* ...in generational mode */
   if (!(args & has_E)) {  /* no option '-E'? */
     if (handle_luainit(L) != LUA_OK)  /* run LUA_INIT */
       return 0;  /* error running LUA_INIT */
@@ -741,26 +741,26 @@ static int pmain (lua_State *L) {
     }
     else dofile(L, NULL);  /* executes stdin as a file */
   }
-  lua_pushboolean(L, 1);  /* signal no errors */
+  lua55_pushboolean(L, 1);  /* signal no errors */
   return 1;
 }
 
 
 int main (int argc, char **argv) {
   int status, result;
-  lua_State *L = luaL_newstate();  /* create state */
+  lua_State *L = lua55L_newstate();  /* create state */
   if (L == NULL) {
     l_message(argv[0], "cannot create state: not enough memory");
     return EXIT_FAILURE;
   }
-  lua_gc(L, LUA_GCSTOP);  /* stop GC while building state */
-  lua_pushcfunction(L, &pmain);  /* to call 'pmain' in protected mode */
-  lua_pushinteger(L, argc);  /* 1st argument */
-  lua_pushlightuserdata(L, argv); /* 2nd argument */
-  status = lua_pcall(L, 2, 1, 0);  /* do the call */
-  result = lua_toboolean(L, -1);  /* get result */
+  lua55_gc(L, LUA_GCSTOP);  /* stop GC while building state */
+  lua55_pushcfunction(L, &pmain);  /* to call 'pmain' in protected mode */
+  lua55_pushinteger(L, argc);  /* 1st argument */
+  lua55_pushlightuserdata(L, argv); /* 2nd argument */
+  status = lua55_pcall(L, 2, 1, 0);  /* do the call */
+  result = lua55_toboolean(L, -1);  /* get result */
   report(L, status);
-  lua_close(L);
+  lua55_close(L);
   return (result && status == LUA_OK) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 

@@ -551,6 +551,13 @@
 
 /* }================================================================== */
 
+/* Basic types for lua55 - used internally */
+typedef LUA_NUMBER lua55_Number;
+typedef LUA_INTEGER lua55_Integer;
+typedef LUA_UNSIGNED lua55_Unsigned;
+
+/* LUA_KCONTEXT is defined later in this file */
+
 
 /*
 ** {==================================================================
@@ -724,7 +731,7 @@
 @@ LUAI_MAXALIGN defines fields that, when used in a union, ensure
 ** maximum alignment for the other items in that union.
 */
-#define LUAI_MAXALIGN  lua_Number n; double u; void *s; lua_Integer i; long l
+#define LUAI_MAXALIGN  lua55_Number n; double u; void *s; lua55_Integer i; long l
 
 /* }================================================================== */
 

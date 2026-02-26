@@ -6,5 +6,6 @@
 
 # Executables
 example/test_lua51
+example/test_lua55
 example/test_luau
 example/test_luau_runtime

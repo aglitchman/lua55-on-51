@@ -786,9 +786,9 @@ void luaD_callnoyield (lua_State *L, StkId func, int nResults) {
 
 
 /*
-** Finish the job of 'lua_pcallk' after it was interrupted by an yield.
+** Finish the job of 'lua55_pcallk' after it was interrupted by an yield.
 ** (The caller, 'finishCcall', does the final call to 'adjustresults'.)
-** The main job is to complete the 'luaD_pcall' called by 'lua_pcallk'.
+** The main job is to complete the 'luaD_pcall' called by 'lua55_pcallk'.
 ** If a '__close' method yields here, eventually control will be back
 ** to 'finishCcall' (when that '__close' method finally returns) and
 ** 'finishpcallk' will run again and close any still pending '__close'
@@ -815,7 +815,7 @@ static TStatus finishpcallk (lua_State *L,  CallInfo *ci) {
   }
   ci->callstatus &= ~CIST_YPCALL;
   L->errfunc = ci->u.c.old_errfunc;
-  /* if it is here, there were errors or yields; unlike 'lua_pcallk',
+  /* if it is here, there were errors or yields; unlike 'lua55_pcallk',
      do not change status */
   return status;
 }
@@ -825,13 +825,13 @@ static TStatus finishpcallk (lua_State *L,  CallInfo *ci) {
 ** Completes the execution of a C function interrupted by an yield.
 ** The interruption must have happened while the function was either
 ** closing its tbc variables in 'moveresults' or executing
-** 'lua_callk'/'lua_pcallk'. In the first case, it just redoes
+** 'lua55_callk'/'lua55_pcallk'. In the first case, it just redoes
 ** 'luaD_poscall'. In the second case, the call to 'finishpcallk'
-** finishes the interrupted execution of 'lua_pcallk'.  After that, it
+** finishes the interrupted execution of 'lua55_pcallk'.  After that, it
 ** calls the continuation of the interrupted function and finally it
 ** completes the job of the 'luaD_call' that called the function.  In
 ** the call to 'adjustresults', we do not know the number of results
-** of the function called by 'lua_callk'/'lua_pcallk', so we are
+** of the function called by 'lua55_callk'/'lua55_pcallk', so we are
 ** conservative and use LUA_MULTRET (always adjust).
 */
 static void finishCcall (lua_State *L, CallInfo *ci) {
@@ -846,9 +846,9 @@ static void finishCcall (lua_State *L, CallInfo *ci) {
     lua_KFunction kf = ci->u.c.k;  /* continuation function */
     /* must have a continuation and must be able to call it */
     lua_assert(kf != NULL && yieldable(L));
-    if (ci->callstatus & CIST_YPCALL)   /* was inside a 'lua_pcallk'? */
+    if (ci->callstatus & CIST_YPCALL)   /* was inside a 'lua55_pcallk'? */
       status = finishpcallk(L, ci);  /* finish it */
-    adjustresults(L, LUA_MULTRET);  /* finish 'lua_callk' */
+    adjustresults(L, LUA_MULTRET);  /* finish 'lua55_callk' */
     lua_unlock(L);
     n = (*kf)(L, APIstatus(status), ci->u.c.ctx);  /* call continuation */
     lua_lock(L);
@@ -892,7 +892,7 @@ static CallInfo *findpcall (lua_State *L) {
 
 
 /*
-** Signal an error in the call to 'lua_resume', not in the execution
+** Signal an error in the call to 'lua55_resume', not in the execution
 ** of the coroutine itself. (Such errors should not be handled by any
 ** coroutine error handler and should not kill the coroutine.)
 */
@@ -907,7 +907,7 @@ static int resume_error (lua_State *L, const char *msg, int narg) {
 
 
 /*
-** Do the work for 'lua_resume' in protected mode. Most of the work
+** Do the work for 'lua55_resume' in protected mode. Most of the work
 ** depends on the status of the coroutine: initial state, suspended
 ** inside a hook, or regularly suspended (optionally with a continuation
 ** function), plus erroneous cases: non-suspended coroutine or dead
@@ -963,7 +963,7 @@ static TStatus precover (lua_State *L, TStatus status) {
 }
 
 
-LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs,
+LUA_API int lua55_resume (lua_State *L, lua_State *from, int nargs,
                                       int *nresults) {
   TStatus status;
   lua_lock(L);
@@ -998,12 +998,12 @@ LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs,
 }
 
 
-LUA_API int lua_isyieldable (lua_State *L) {
+LUA_API int lua55_isyieldable (lua_State *L) {
   return yieldable(L);
 }
 
 
-LUA_API int lua_yieldk (lua_State *L, int nresults, lua_KContext ctx,
+LUA_API int lua55_yieldk (lua_State *L, int nresults, lua_KContext ctx,
                         lua_KFunction k) {
   CallInfo *ci;
   luai_userstateyield(L, nresults);
