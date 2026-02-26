@@ -102,7 +102,10 @@ void luau_bridge_unref(lua_State* L, int ref) {
 
 // ============== luau_compile / luau_load bridges ==============
 char* luau_bridge_compile(const char* source, size_t sourceLength, size_t* outSize) {
-    return luau_compile(source, sourceLength, NULL, outSize);
+    lua_CompileOptions opts = {};
+    opts.optimizationLevel = 2;
+    opts.debugLevel = 1;
+    return luau_compile(source, sourceLength, &opts, outSize);
 }
 
 int luau_bridge_load(lua_State* L, const char* chunkname, const char* data, size_t size, int env) {
