@@ -25,7 +25,7 @@ COMPAT_RUNTIME_LIB = $(COMPAT_DIR)/libcompat_runtime.a
 .PHONY: all lua51-lib luau-lib compat-lib compat-runtime-lib \
         example-lua51 example-luau example-luau-runtime precompile clean
 
-all: example-lua51
+all: example-lua51 example-luau precompile example-luau-runtime
 
 lua51-lib:
 	$(MAKE) -C $(LUA51_SRC) a MYCFLAGS="-DLUA_USE_LINUX"
