@@ -30,11 +30,11 @@
 
 
 /* load one chunk; from lundump.c */
-LUAI_FUNC LClosure* luaU_undump (lua_State* L, ZIO* Z, const char* name,
+LUAI_FUNC LClosure* luaU_undump (lua55_State* L, ZIO* Z, const char* name,
                                                int fixed);
 
 /* dump one chunk; from ldump.c */
-LUAI_FUNC int luaU_dump (lua_State* L, const Proto* f, lua_Writer w,
+LUAI_FUNC int luaU_dump (lua55_State* L, const Proto* f, lua_Writer w,
                          void* data, int strip);
 
 #endif

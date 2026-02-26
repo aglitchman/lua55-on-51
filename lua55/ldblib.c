@@ -33,19 +33,19 @@ static const char *const HOOKKEY = "_HOOKKEY";
 ** guarantees about its stack space; any push in L1 must be
 ** checked.
 */
-static void checkstack (lua_State *L, lua_State *L1, int n) {
+static void checkstack (lua55_State *L, lua55_State *L1, int n) {
   if (l_unlikely(L != L1 && !lua55_checkstack(L1, n)))
     lua55L_error(L, "stack overflow");
 }
 
 
-static int db_getregistry (lua_State *L) {
+static int db_getregistry (lua55_State *L) {
   lua55_pushvalue(L, LUA_REGISTRYINDEX);
   return 1;
 }
 
 
-static int db_getmetatable (lua_State *L) {
+static int db_getmetatable (lua55_State *L) {
   lua55L_checkany(L, 1);
   if (!lua55_getmetatable(L, 1)) {
     lua55_pushnil(L);  /* no metatable */
@@ -54,7 +54,7 @@ static int db_getmetatable (lua_State *L) {
 }
 
 
-static int db_setmetatable (lua_State *L) {
+static int db_setmetatable (lua55_State *L) {
   int t = lua55_type(L, 2);
   lua55L_argexpected(L, t == LUA_TNIL || t == LUA_TTABLE, 2, "nil or table");
   lua55_settop(L, 2);
@@ -63,7 +63,7 @@ static int db_setmetatable (lua_State *L) {
 }
 
 
-static int db_getuservalue (lua_State *L) {
+static int db_getuservalue (lua55_State *L) {
   int n = (int)lua55L_optinteger(L, 2, 1);
   if (lua55_type(L, 1) != LUA_TUSERDATA)
     lua55L_pushfail(L);
@@ -75,7 +75,7 @@ static int db_getuservalue (lua_State *L) {
 }
 
 
-static int db_setuservalue (lua_State *L) {
+static int db_setuservalue (lua55_State *L) {
   int n = (int)lua55L_optinteger(L, 3, 1);
   lua55L_checktype(L, 1, LUA_TUSERDATA);
   lua55L_checkany(L, 2);
@@ -92,7 +92,7 @@ static int db_setuservalue (lua_State *L) {
 ** 1 if this argument is present (so that functions can skip it to
 ** access their other arguments)
 */
-static lua_State *getthread (lua_State *L, int *arg) {
+static lua55_State *getthread (lua55_State *L, int *arg) {
   if (lua55_isthread(L, 1)) {
     *arg = 1;
     return lua55_tothread(L, 1);
@@ -109,17 +109,17 @@ static lua_State *getthread (lua_State *L, int *arg) {
 ** from 'lua55_getinfo' into result table. Key is always a string;
 ** value can be a string, an int, or a boolean.
 */
-static void settabss (lua_State *L, const char *k, const char *v) {
+static void settabss (lua55_State *L, const char *k, const char *v) {
   lua55_pushstring(L, v);
   lua55_setfield(L, -2, k);
 }
 
-static void settabsi (lua_State *L, const char *k, int v) {
+static void settabsi (lua55_State *L, const char *k, int v) {
   lua55_pushinteger(L, v);
   lua55_setfield(L, -2, k);
 }
 
-static void settabsb (lua_State *L, const char *k, int v) {
+static void settabsb (lua55_State *L, const char *k, int v) {
   lua55_pushboolean(L, v);
   lua55_setfield(L, -2, k);
 }
@@ -132,7 +132,7 @@ static void settabsb (lua_State *L, const char *k, int v) {
 ** 'lua55_getinfo' on top of the result table so that it can call
 ** 'lua55_setfield'.
 */
-static void treatstackoption (lua_State *L, lua_State *L1, const char *fname) {
+static void treatstackoption (lua55_State *L, lua55_State *L1, const char *fname) {
   if (L == L1)
     lua55_rotate(L, -2, 1);  /* exchange object and table */
   else
@@ -147,10 +147,10 @@ static void treatstackoption (lua_State *L, lua_State *L1, const char *fname) {
 ** two optional outputs (function and line table) from function
 ** 'lua55_getinfo'.
 */
-static int db_getinfo (lua_State *L) {
+static int db_getinfo (lua55_State *L) {
   lua_Debug ar;
   int arg;
-  lua_State *L1 = getthread(L, &arg);
+  lua55_State *L1 = getthread(L, &arg);
   const char *options = lua55L_optstring(L, arg+2, "flnSrtu");
   checkstack(L, L1, 3);
   lua55L_argcheck(L, options[0] != '>', arg + 2, "invalid option '>'");
@@ -203,9 +203,9 @@ static int db_getinfo (lua_State *L) {
 }
 
 
-static int db_getlocal (lua_State *L) {
+static int db_getlocal (lua55_State *L) {
   int arg;
-  lua_State *L1 = getthread(L, &arg);
+  lua55_State *L1 = getthread(L, &arg);
   int nvar = (int)lua55L_checkinteger(L, arg + 2);  /* local-variable index */
   if (lua55_isfunction(L, arg + 1)) {  /* function argument? */
     lua55_pushvalue(L, arg + 1);  /* push function */
@@ -234,10 +234,10 @@ static int db_getlocal (lua_State *L) {
 }
 
 
-static int db_setlocal (lua_State *L) {
+static int db_setlocal (lua55_State *L) {
   int arg;
   const char *name;
-  lua_State *L1 = getthread(L, &arg);
+  lua55_State *L1 = getthread(L, &arg);
   lua_Debug ar;
   int level = (int)lua55L_checkinteger(L, arg + 1);
   int nvar = (int)lua55L_checkinteger(L, arg + 2);
@@ -258,7 +258,7 @@ static int db_setlocal (lua_State *L) {
 /*
 ** get (if 'get' is true) or set an upvalue from a closure
 */
-static int auxupvalue (lua_State *L, int get) {
+static int auxupvalue (lua55_State *L, int get) {
   const char *name;
   int n = (int)lua55L_checkinteger(L, 2);  /* upvalue index */
   lua55L_checktype(L, 1, LUA_TFUNCTION);  /* closure */
@@ -270,12 +270,12 @@ static int auxupvalue (lua_State *L, int get) {
 }
 
 
-static int db_getupvalue (lua_State *L) {
+static int db_getupvalue (lua55_State *L) {
   return auxupvalue(L, 1);
 }
 
 
-static int db_setupvalue (lua_State *L) {
+static int db_setupvalue (lua55_State *L) {
   lua55L_checkany(L, 3);
   return auxupvalue(L, 0);
 }
@@ -285,7 +285,7 @@ static int db_setupvalue (lua_State *L) {
 ** Check whether a given upvalue from a given closure exists and
 ** returns its index
 */
-static void *checkupval (lua_State *L, int argf, int argnup, int *pnup) {
+static void *checkupval (lua55_State *L, int argf, int argnup, int *pnup) {
   void *id;
   int nup = (int)lua55L_checkinteger(L, argnup);  /* upvalue index */
   lua55L_checktype(L, argf, LUA_TFUNCTION);  /* closure */
@@ -298,7 +298,7 @@ static void *checkupval (lua_State *L, int argf, int argnup, int *pnup) {
 }
 
 
-static int db_upvalueid (lua_State *L) {
+static int db_upvalueid (lua55_State *L) {
   void *id = checkupval(L, 1, 2, NULL);
   if (id != NULL)
     lua55_pushlightuserdata(L, id);
@@ -308,7 +308,7 @@ static int db_upvalueid (lua_State *L) {
 }
 
 
-static int db_upvaluejoin (lua_State *L) {
+static int db_upvaluejoin (lua55_State *L) {
   int n1, n2;
   checkupval(L, 1, 2, &n1);
   checkupval(L, 3, 4, &n2);
@@ -323,7 +323,7 @@ static int db_upvaluejoin (lua_State *L) {
 ** Call hook function registered at hook table for the current
 ** thread (if there is one)
 */
-static void hookf (lua_State *L, lua_Debug *ar) {
+static void hookf (lua55_State *L, lua_Debug *ar) {
   static const char *const hooknames[] =
     {"call", "return", "line", "count", "tail call"};
   lua55_getfield(L, LUA_REGISTRYINDEX, HOOKKEY);
@@ -365,10 +365,10 @@ static char *unmakemask (int mask, char *smask) {
 }
 
 
-static int db_sethook (lua_State *L) {
+static int db_sethook (lua55_State *L) {
   int arg, mask, count;
   lua_Hook func;
-  lua_State *L1 = getthread(L, &arg);
+  lua55_State *L1 = getthread(L, &arg);
   if (lua55_isnoneornil(L, arg+1)) {  /* no hook? */
     lua55_settop(L, arg+1);
     func = NULL; mask = 0; count = 0;  /* turn off hooks */
@@ -395,9 +395,9 @@ static int db_sethook (lua_State *L) {
 }
 
 
-static int db_gethook (lua_State *L) {
+static int db_gethook (lua55_State *L) {
   int arg;
-  lua_State *L1 = getthread(L, &arg);
+  lua55_State *L1 = getthread(L, &arg);
   char buff[5];
   int mask = lua55_gethookmask(L1);
   lua_Hook hook = lua55_gethook(L1);
@@ -420,7 +420,7 @@ static int db_gethook (lua_State *L) {
 }
 
 
-static int db_debug (lua_State *L) {
+static int db_debug (lua55_State *L) {
   for (;;) {
     char buffer[250];
     lua_writestringerror("%s", "lua_debug> ");
@@ -435,9 +435,9 @@ static int db_debug (lua_State *L) {
 }
 
 
-static int db_traceback (lua_State *L) {
+static int db_traceback (lua55_State *L) {
   int arg;
-  lua_State *L1 = getthread(L, &arg);
+  lua55_State *L1 = getthread(L, &arg);
   const char *msg = lua55_tostring(L, arg + 1);
   if (msg == NULL && !lua55_isnoneornil(L, arg + 1))  /* non-string 'msg'? */
     lua55_pushvalue(L, arg + 1);  /* return it untouched */
@@ -470,7 +470,7 @@ static const luaL_Reg dblib[] = {
 };
 
 
-LUAMOD_API int lua55open_debug (lua_State *L) {
+LUAMOD_API int lua55open_debug (lua55_State *L) {
   lua55L_newlib(L, dblib);
   return 1;
 }

@@ -543,7 +543,7 @@ static void freeexps (FuncState *fs, expdesc *e1, expdesc *e2) {
 ** Add constant 'v' to prototype's list of constants (field 'k').
 */
 static int addk (FuncState *fs, Proto *f, TValue *v) {
-  lua_State *L = fs->ls->L;
+  lua55_State *L = fs->ls->L;
   int oldsize = f->sizek;
   int k = fs->nk;
   luaM_growvector(L, f->k, k, f->sizek, TValue, MAXARG_Ax, "constants");

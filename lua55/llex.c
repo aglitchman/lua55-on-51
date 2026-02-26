@@ -72,7 +72,7 @@ static void save (LexState *ls, int c) {
 }
 
 
-void luaX_init (lua_State *L) {
+void luaX_init (lua55_State *L) {
   int i;
   TString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
   luaC_fix(L, obj2gco(e));  /* never collect this name */
@@ -133,7 +133,7 @@ l_noret luaX_syntaxerror (LexState *ls, const char *msg) {
 ** one copy of each unique string.
 */
 static TString *anchorstr (LexState *ls, TString *ts) {
-  lua_State *L = ls->L;
+  lua55_State *L = ls->L;
   TValue oldts;
   int tag = luaH_getstr(ls->h, ts, &oldts);
   if (!tagisempty(tag))  /* string already present? */
@@ -173,7 +173,7 @@ static void inclinenumber (LexState *ls) {
 }
 
 
-void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source,
+void luaX_setinput (lua55_State *L, LexState *ls, ZIO *z, TString *source,
                     int firstchar) {
   ls->t.token = 0;
   ls->L = L;

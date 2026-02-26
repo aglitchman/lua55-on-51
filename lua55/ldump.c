@@ -24,7 +24,7 @@
 
 
 typedef struct {
-  lua_State *L;
+  lua55_State *L;
   lua_Writer writer;
   void *data;
   size_t offset;  /* current position relative to beginning of dump */
@@ -285,7 +285,7 @@ static void dumpHeader (DumpState *D) {
 /*
 ** dump Lua function as precompiled chunk
 */
-int luaU_dump (lua_State *L, const Proto *f, lua_Writer w, void *data,
+int luaU_dump (lua55_State *L, const Proto *f, lua_Writer w, void *data,
                int strip) {
   DumpState D;
   D.h = luaH_new(L);  /* aux. table to keep strings already dumped */

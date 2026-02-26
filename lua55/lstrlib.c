@@ -37,7 +37,7 @@
 #endif
 
 
-static int str_len (lua_State *L) {
+static int str_len (lua55_State *L) {
   size_t l;
   lua55L_checklstring(L, 1, &l);
   lua55_pushinteger(L, (lua_Integer)l);
@@ -69,7 +69,7 @@ static size_t posrelatI (lua_Integer pos, size_t len) {
 ** with default value 'def'.
 ** Negative means back from end: clip result to [0, len]
 */
-static size_t getendpos (lua_State *L, int arg, lua_Integer def,
+static size_t getendpos (lua55_State *L, int arg, lua_Integer def,
                          size_t len) {
   lua_Integer pos = lua55L_optinteger(L, arg, def);
   if (pos > (lua_Integer)len)
@@ -82,7 +82,7 @@ static size_t getendpos (lua_State *L, int arg, lua_Integer def,
 }
 
 
-static int str_sub (lua_State *L) {
+static int str_sub (lua55_State *L) {
   size_t l;
   const char *s = lua55L_checklstring(L, 1, &l);
   size_t start = posrelatI(lua55L_checkinteger(L, 2), l);
@@ -94,7 +94,7 @@ static int str_sub (lua_State *L) {
 }
 
 
-static int str_reverse (lua_State *L) {
+static int str_reverse (lua55_State *L) {
   size_t l, i;
   luaL_Buffer b;
   const char *s = lua55L_checklstring(L, 1, &l);
@@ -106,7 +106,7 @@ static int str_reverse (lua_State *L) {
 }
 
 
-static int str_lower (lua_State *L) {
+static int str_lower (lua55_State *L) {
   size_t l;
   size_t i;
   luaL_Buffer b;
@@ -119,7 +119,7 @@ static int str_lower (lua_State *L) {
 }
 
 
-static int str_upper (lua_State *L) {
+static int str_upper (lua55_State *L) {
   size_t l;
   size_t i;
   luaL_Buffer b;
@@ -136,7 +136,7 @@ static int str_upper (lua_State *L) {
 ** MAX_SIZE is limited both by size_t and lua_Integer.
 ** When x <= MAX_SIZE, x can be safely cast to size_t or lua_Integer.
 */
-static int str_rep (lua_State *L) {
+static int str_rep (lua55_State *L) {
   size_t len, lsep;
   const char *s = lua55L_checklstring(L, 1, &len);
   lua_Integer n = lua55L_checkinteger(L, 2);
@@ -163,7 +163,7 @@ static int str_rep (lua_State *L) {
 }
 
 
-static int str_byte (lua_State *L) {
+static int str_byte (lua55_State *L) {
   size_t l;
   const char *s = lua55L_checklstring(L, 1, &l);
   lua_Integer pi = lua55L_optinteger(L, 2, 1);
@@ -181,7 +181,7 @@ static int str_byte (lua_State *L) {
 }
 
 
-static int str_char (lua_State *L) {
+static int str_char (lua55_State *L) {
   int n = lua55_gettop(L);  /* number of arguments */
   int i;
   luaL_Buffer b;
@@ -208,7 +208,7 @@ struct str_Writer {
 };
 
 
-static int writer (lua_State *L, const void *b, size_t size, void *ud) {
+static int writer (lua55_State *L, const void *b, size_t size, void *ud) {
   struct str_Writer *state = (struct str_Writer *)ud;
   if (!state->init) {
     state->init = 1;
@@ -224,7 +224,7 @@ static int writer (lua_State *L, const void *b, size_t size, void *ud) {
 }
 
 
-static int str_dump (lua_State *L) {
+static int str_dump (lua55_State *L) {
   struct str_Writer state;
   int strip = lua55_toboolean(L, 2);
   lua55L_argcheck(L, lua55_type(L, 1) == LUA_TFUNCTION && !lua55_iscfunction(L, 1),
@@ -256,7 +256,7 @@ static const luaL_Reg stringmetamethods[] = {
 
 #else		/* }{ */
 
-static int tonum (lua_State *L, int arg) {
+static int tonum (lua55_State *L, int arg) {
   if (lua55_type(L, arg) == LUA_TNUMBER) {  /* already a number? */
     lua55_pushvalue(L, arg);
     return 1;
@@ -276,7 +276,7 @@ static int tonum (lua_State *L, int arg) {
 ** doesn't work, the only other option would be for the second
 ** operand to have a different metamethod.
 */
-static void trymt (lua_State *L, const char *mtkey, const char *opname) {
+static void trymt (lua55_State *L, const char *mtkey, const char *opname) {
   lua55_settop(L, 2);  /* back to the original arguments */
   if (l_unlikely(lua55_type(L, 2) == LUA_TSTRING ||
                  !lua55L_getmetafield(L, 2, mtkey)))
@@ -287,7 +287,7 @@ static void trymt (lua_State *L, const char *mtkey, const char *opname) {
 }
 
 
-static int arith (lua_State *L, int op, const char *mtname) {
+static int arith (lua55_State *L, int op, const char *mtname) {
   if (tonum(L, 1) && tonum(L, 2))
     lua55_arith(L, op);  /* result will be on the top */
   else
@@ -296,35 +296,35 @@ static int arith (lua_State *L, int op, const char *mtname) {
 }
 
 
-static int arith_add (lua_State *L) {
+static int arith_add (lua55_State *L) {
   return arith(L, LUA_OPADD, "__add");
 }
 
-static int arith_sub (lua_State *L) {
+static int arith_sub (lua55_State *L) {
   return arith(L, LUA_OPSUB, "__sub");
 }
 
-static int arith_mul (lua_State *L) {
+static int arith_mul (lua55_State *L) {
   return arith(L, LUA_OPMUL, "__mul");
 }
 
-static int arith_mod (lua_State *L) {
+static int arith_mod (lua55_State *L) {
   return arith(L, LUA_OPMOD, "__mod");
 }
 
-static int arith_pow (lua_State *L) {
+static int arith_pow (lua55_State *L) {
   return arith(L, LUA_OPPOW, "__pow");
 }
 
-static int arith_div (lua_State *L) {
+static int arith_div (lua55_State *L) {
   return arith(L, LUA_OPDIV, "__div");
 }
 
-static int arith_idiv (lua_State *L) {
+static int arith_idiv (lua55_State *L) {
   return arith(L, LUA_OPIDIV, "__idiv");
 }
 
-static int arith_unm (lua_State *L) {
+static int arith_unm (lua55_State *L) {
   return arith(L, LUA_OPUNM, "__unm");
 }
 
@@ -361,7 +361,7 @@ typedef struct MatchState {
   const char *src_init;  /* init of source string */
   const char *src_end;  /* end ('\0') of source string */
   const char *p_end;  /* end ('\0') of pattern */
-  lua_State *L;
+  lua55_State *L;
   int matchdepth;  /* control for recursive depth (to avoid C stack overflow) */
   int level;  /* total number of captures (finished or unfinished) */
   struct {
@@ -757,7 +757,7 @@ static int nospecials (const char *p, size_t l) {
 }
 
 
-static void prepstate (MatchState *ms, lua_State *L,
+static void prepstate (MatchState *ms, lua55_State *L,
                        const char *s, size_t ls, const char *p, size_t lp) {
   ms->L = L;
   ms->matchdepth = MAXCCALLS;
@@ -773,7 +773,7 @@ static void reprepstate (MatchState *ms) {
 }
 
 
-static int str_find_aux (lua_State *L, int find) {
+static int str_find_aux (lua55_State *L, int find) {
   size_t ls, lp;
   const char *s = lua55L_checklstring(L, 1, &ls);
   const char *p = lua55L_checklstring(L, 2, &lp);
@@ -819,12 +819,12 @@ static int str_find_aux (lua_State *L, int find) {
 }
 
 
-static int str_find (lua_State *L) {
+static int str_find (lua55_State *L) {
   return str_find_aux(L, 1);
 }
 
 
-static int str_match (lua_State *L) {
+static int str_match (lua55_State *L) {
   return str_find_aux(L, 0);
 }
 
@@ -838,7 +838,7 @@ typedef struct GMatchState {
 } GMatchState;
 
 
-static int gmatch_aux (lua_State *L) {
+static int gmatch_aux (lua55_State *L) {
   GMatchState *gm = (GMatchState *)lua55_touserdata(L, lua55_upvalueindex(3));
   const char *src;
   gm->ms.L = L;
@@ -854,7 +854,7 @@ static int gmatch_aux (lua_State *L) {
 }
 
 
-static int gmatch (lua_State *L) {
+static int gmatch (lua55_State *L) {
   size_t ls, lp;
   const char *s = lua55L_checklstring(L, 1, &ls);
   const char *p = lua55L_checklstring(L, 2, &lp);
@@ -874,7 +874,7 @@ static int gmatch (lua_State *L) {
 static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
                                                    const char *e) {
   size_t l;
-  lua_State *L = ms->L;
+  lua55_State *L = ms->L;
   const char *news = lua55_tolstring(L, 3, &l);
   const char *p;
   while ((p = (char *)memchr(news, L_ESC, l)) != NULL) {
@@ -908,7 +908,7 @@ static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
 */
 static int add_value (MatchState *ms, luaL_Buffer *b, const char *s,
                                       const char *e, int tr) {
-  lua_State *L = ms->L;
+  lua55_State *L = ms->L;
   switch (tr) {
     case LUA_TFUNCTION: {  /* call the function */
       int n;
@@ -942,7 +942,7 @@ static int add_value (MatchState *ms, luaL_Buffer *b, const char *s,
 }
 
 
-static int str_gsub (lua_State *L) {
+static int str_gsub (lua55_State *L) {
   size_t srcl, lp;
   const char *src = lua55L_checklstring(L, 1, &srcl);  /* subject */
   const char *p = lua55L_checklstring(L, 2, &lp);  /* pattern */
@@ -1057,7 +1057,7 @@ static int num2straux (char *buff, unsigned sz, lua_Number x) {
 }
 
 
-static int lua_number2strx (lua_State *L, char *buff, unsigned sz,
+static int lua_number2strx (lua55_State *L, char *buff, unsigned sz,
                             const char *fmt, lua_Number x) {
   int n = num2straux(buff, sz, x);
   if (fmt[SIZELENMOD] == 'A') {
@@ -1152,7 +1152,7 @@ static void addquoted (luaL_Buffer *b, const char *s, size_t len) {
 ** (to preserve precision); inf, -inf, and NaN are handled separately.
 ** (NaN cannot be expressed as a numeral, so we write '(0/0)' for it.)
 */
-static int quotefloat (lua_State *L, char *buff, lua_Number n) {
+static int quotefloat (lua55_State *L, char *buff, lua_Number n) {
   const char *s;  /* for the fixed representations */
   if (n == (lua_Number)HUGE_VAL)  /* inf? */
     s = "1e9999";
@@ -1176,7 +1176,7 @@ static int quotefloat (lua_State *L, char *buff, lua_Number n) {
 }
 
 
-static void addliteral (lua_State *L, luaL_Buffer *b, int arg) {
+static void addliteral (lua55_State *L, luaL_Buffer *b, int arg) {
   switch (lua55_type(L, arg)) {
     case LUA_TSTRING: {
       size_t len;
@@ -1226,7 +1226,7 @@ static const char *get2digits (const char *s) {
 ** be a valid conversion specifier. 'flags' are the accepted flags;
 ** 'precision' signals whether to accept a precision.
 */
-static void checkformat (lua_State *L, const char *form, const char *flags,
+static void checkformat (lua55_State *L, const char *form, const char *flags,
                                        int precision) {
   const char *spec = form + 1;  /* skip '%' */
   spec += strspn(spec, flags);  /* skip flags */
@@ -1246,7 +1246,7 @@ static void checkformat (lua_State *L, const char *form, const char *flags,
 ** Get a conversion specification and copy it to 'form'.
 ** Return the address of its last character.
 */
-static const char *getformat (lua_State *L, const char *strfrmt,
+static const char *getformat (lua55_State *L, const char *strfrmt,
                                             char *form) {
   /* spans flags, width, and precision ('0' is included as a flag) */
   size_t len = strspn(strfrmt, L_FMTFLAGSF "123456789.");
@@ -1274,7 +1274,7 @@ static void addlenmod (char *form, const char *lenmod) {
 }
 
 
-static int str_format (lua_State *L) {
+static int str_format (lua55_State *L) {
   int top = lua55_gettop(L);
   int arg = 1;
   size_t sfl;
@@ -1420,7 +1420,7 @@ static const union {
 ** information to pack/unpack stuff
 */
 typedef struct Header {
-  lua_State *L;
+  lua55_State *L;
   int islittle;
   unsigned maxalign;
 } Header;
@@ -1479,7 +1479,7 @@ static unsigned getnumlimit (Header *h, const char **fmt, size_t df) {
 /*
 ** Initialize Header
 */
-static void initheader (lua_State *L, Header *h) {
+static void initheader (lua55_State *L, Header *h) {
   h->L = L;
   h->islittle = nativeendian.little;
   h->maxalign = 1;
@@ -1608,7 +1608,7 @@ static void copywithendian (char *dest, const char *src,
 }
 
 
-static int str_pack (lua_State *L) {
+static int str_pack (lua55_State *L) {
   luaL_Buffer b;
   Header h;
   const char *fmt = lua55L_checkstring(L, 1);  /* format string */
@@ -1714,7 +1714,7 @@ static int str_pack (lua_State *L) {
 }
 
 
-static int str_packsize (lua_State *L) {
+static int str_packsize (lua55_State *L) {
   Header h;
   const char *fmt = lua55L_checkstring(L, 1);  /* format string */
   size_t totalsize = 0;  /* accumulate total size of result */
@@ -1743,7 +1743,7 @@ static int str_packsize (lua_State *L) {
 ** it must check the unread bytes to see whether they do not cause an
 ** overflow.
 */
-static lua_Integer unpackint (lua_State *L, const char *str,
+static lua_Integer unpackint (lua55_State *L, const char *str,
                               int islittle, int size, int issigned) {
   lua_Unsigned res = 0;
   int i;
@@ -1769,7 +1769,7 @@ static lua_Integer unpackint (lua_State *L, const char *str,
 }
 
 
-static int str_unpack (lua_State *L) {
+static int str_unpack (lua55_State *L) {
   Header h;
   const char *fmt = lua55L_checkstring(L, 1);
   size_t ld;
@@ -1869,7 +1869,7 @@ static const luaL_Reg strlib[] = {
 };
 
 
-static void createmetatable (lua_State *L) {
+static void createmetatable (lua55_State *L) {
   /* table to be metatable for strings */
   lua55L_newlibtable(L, stringmetamethods);
   lua55L_setfuncs(L, stringmetamethods, 0);
@@ -1886,7 +1886,7 @@ static void createmetatable (lua_State *L) {
 /*
 ** Open string library
 */
-LUAMOD_API int lua55open_string (lua_State *L) {
+LUAMOD_API int lua55open_string (lua55_State *L) {
   lua55L_newlib(L, strlib);
   createmetatable(L);
   return 1;

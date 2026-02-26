@@ -47,16 +47,16 @@ void *l_Trick = 0;
 #define obj_at(L,k)	s2v(L->ci->func.p + (k))
 
 
-static int runC (lua_State *L, lua_State *L1, const char *pc);
+static int runC (lua55_State *L, lua55_State *L1, const char *pc);
 
 
-static void setnameval (lua_State *L, const char *name, int val) {
+static void setnameval (lua55_State *L, const char *name, int val) {
   lua55_pushinteger(L, val);
   lua55_setfield(L, -2, name);
 }
 
 
-static void pushobject (lua_State *L, const TValue *o) {
+static void pushobject (lua55_State *L, const TValue *o) {
   setobj2s(L, L->top.p, o);
   api_incr_top(L);
 }
@@ -72,7 +72,7 @@ static void badexit (const char *fmt, const char *s1, const char *s2) {
 }
 
 
-static int tpanic (lua_State *L) {
+static int tpanic (lua55_State *L) {
   const char *msg = (lua55_type(L, -1) == LUA_TSTRING)
                   ? lua55_tostring(L, -1)
                   : "error object is not a string";
@@ -93,7 +93,7 @@ static int tpanic (lua_State *L) {
 ** - 2.store: all warnings go to the global '_WARN';
 */
 static void warnf (void *ud, const char *msg, int tocont) {
-  lua_State *L = cast(lua_State *, ud);
+  lua55_State *L = cast(lua55_State *, ud);
   static char buff[200] = "";  /* should be enough for tests... */
   static int onoff = 0;
   static int mode = 0;  /* start in normal mode */
@@ -321,7 +321,7 @@ static void printobj (global_State *g, GCObject *o) {
 }
 
 
-void lua_printobj (lua_State *L, struct GCObject *o) {
+void lua_printobj (lua55_State *L, struct GCObject *o) {
   printobj(G(L), o);
 }
 
@@ -480,7 +480,7 @@ static int lua_checkpc (CallInfo *ci) {
 }
 
 
-static void check_stack (global_State *g, lua_State *L1) {
+static void check_stack (global_State *g, lua55_State *L1) {
   StkId o;
   CallInfo *ci;
   UpVal *uv;
@@ -668,7 +668,7 @@ static l_mem checklist (global_State *g, int maybedead, int tof,
 }
 
 
-int lua_checkmemory (lua_State *L) {
+int lua_checkmemory (lua55_State *L) {
   global_State *g = G(L);
   GCObject *o;
   int maybedead;
@@ -777,7 +777,7 @@ void luaI_printinst (Proto *pt, int pc) {
 #endif
 
 
-static int listcode (lua_State *L) {
+static int listcode (lua55_State *L) {
   int pc;
   Proto *p;
   lua55L_argcheck(L, lua55_isfunction(L, 1) && !lua55_iscfunction(L, 1),
@@ -796,7 +796,7 @@ static int listcode (lua_State *L) {
 }
 
 
-static int printcode (lua_State *L) {
+static int printcode (lua55_State *L) {
   int pc;
   Proto *p;
   lua55L_argcheck(L, lua55_isfunction(L, 1) && !lua55_iscfunction(L, 1),
@@ -812,7 +812,7 @@ static int printcode (lua_State *L) {
 }
 
 
-static int listk (lua_State *L) {
+static int listk (lua55_State *L) {
   Proto *p;
   int i;
   lua55L_argcheck(L, lua55_isfunction(L, 1) && !lua55_iscfunction(L, 1),
@@ -827,7 +827,7 @@ static int listk (lua_State *L) {
 }
 
 
-static int listabslineinfo (lua_State *L) {
+static int listabslineinfo (lua55_State *L) {
   Proto *p;
   int i;
   lua55L_argcheck(L, lua55_isfunction(L, 1) && !lua55_iscfunction(L, 1),
@@ -845,7 +845,7 @@ static int listabslineinfo (lua_State *L) {
 }
 
 
-static int listlocals (lua_State *L) {
+static int listlocals (lua55_State *L) {
   Proto *p;
   int pc = cast_int(lua55L_checkinteger(L, 2)) - 1;
   int i = 0;
@@ -862,7 +862,7 @@ static int listlocals (lua_State *L) {
 
 
 
-void lua_printstack (lua_State *L) {
+void lua_printstack (lua55_State *L) {
   int i;
   int n = lua55_gettop(L);
   printf("stack: >>\n");
@@ -875,7 +875,7 @@ void lua_printstack (lua_State *L) {
 }
 
 
-int lua_printallstack (lua_State *L) {
+int lua_printallstack (lua55_State *L) {
   StkId p;
   int i = 1;
   CallInfo *ci = &L->base_ci;
@@ -897,7 +897,7 @@ int lua_printallstack (lua_State *L) {
 }
 
 
-static int get_limits (lua_State *L) {
+static int get_limits (lua55_State *L) {
   lua55_createtable(L, 0, 5);
   setnameval(L, "IS32INT", LUAI_IS32INT);
   setnameval(L, "MAXARG_Ax", MAXARG_Ax);
@@ -908,9 +908,9 @@ static int get_limits (lua_State *L) {
 }
 
 
-static int get_sizes (lua_State *L) {
+static int get_sizes (lua55_State *L) {
   lua55_newtable(L);
-  setnameval(L, "Lua state", sizeof(lua_State));
+  setnameval(L, "Lua state", sizeof(lua55_State));
   setnameval(L, "global state", sizeof(global_State));
   setnameval(L, "TValue", sizeof(TValue));
   setnameval(L, "Node", sizeof(Node));
@@ -919,7 +919,7 @@ static int get_sizes (lua_State *L) {
 }
 
 
-static int mem_query (lua_State *L) {
+static int mem_query (lua55_State *L) {
   if (lua55_isnone(L, 1)) {
     lua55_pushinteger(L, cast_Integer(l_memcontrol.total));
     lua55_pushinteger(L, cast_Integer(l_memcontrol.numblocks));
@@ -946,7 +946,7 @@ static int mem_query (lua_State *L) {
 }
 
 
-static int alloc_count (lua_State *L) {
+static int alloc_count (lua55_State *L) {
   if (lua55_isnone(L, 1))
     l_memcontrol.countlimit = cast(unsigned long, ~0L);
   else
@@ -955,14 +955,14 @@ static int alloc_count (lua_State *L) {
 }
 
 
-static int alloc_failnext (lua_State *L) {
+static int alloc_failnext (lua55_State *L) {
   UNUSED(L);
   l_memcontrol.failnext = 1;
   return 0;
 }
 
 
-static int settrick (lua_State *L) {
+static int settrick (lua55_State *L) {
   if (ttisnil(obj_at(L, 1)))
     l_Trick = NULL;
   else
@@ -971,7 +971,7 @@ static int settrick (lua_State *L) {
 }
 
 
-static int gc_color (lua_State *L) {
+static int gc_color (lua55_State *L) {
   TValue *o;
   lua55L_checkany(L, 1);
   o = obj_at(L, 1);
@@ -987,7 +987,7 @@ static int gc_color (lua_State *L) {
 }
 
 
-static int gc_age (lua_State *L) {
+static int gc_age (lua55_State *L) {
   TValue *o;
   lua55L_checkany(L, 1);
   o = obj_at(L, 1);
@@ -1003,7 +1003,7 @@ static int gc_age (lua_State *L) {
 }
 
 
-static int gc_printobj (lua_State *L) {
+static int gc_printobj (lua55_State *L) {
   TValue *o;
   lua55L_checkany(L, 1);
   o = obj_at(L, 1);
@@ -1022,7 +1022,7 @@ static const char *const statenames[] = {
   "propagate", "enteratomic", "atomic", "sweepallgc", "sweepfinobj",
   "sweeptobefnz", "sweepend", "callfin", "pause", ""};
 
-static int gc_state (lua_State *L) {
+static int gc_state (lua55_State *L) {
   static const int states[] = {
     GCSpropagate, GCSenteratomic, GCSatomic, GCSswpallgc, GCSswpfinobj,
     GCSswptobefnz, GCSswpend, GCScallfin, GCSpause, -1};
@@ -1048,7 +1048,7 @@ static int gc_state (lua_State *L) {
 
 
 static int tracinggc = 0;
-void luai_tracegctest (lua_State *L, int first) {
+void luai_tracegctest (lua55_State *L, int first) {
   if (!tracinggc) return;
   else {
     global_State *g = G(L);
@@ -1064,7 +1064,7 @@ void luai_tracegctest (lua_State *L, int first) {
 }
 
 
-static int tracegc (lua_State *L) {
+static int tracegc (lua55_State *L) {
   if (lua55_isnil(L, 1))
     tracinggc = 0;
   else {
@@ -1075,7 +1075,7 @@ static int tracegc (lua_State *L) {
 }
 
 
-static int hash_query (lua_State *L) {
+static int hash_query (lua55_State *L) {
   if (lua55_isnone(L, 2)) {
     TString *ts;
     lua55L_argcheck(L, lua55_type(L, 1) == LUA_TSTRING, 1, "string expected");
@@ -1095,7 +1095,7 @@ static int hash_query (lua_State *L) {
 }
 
 
-static int stacklevel (lua_State *L) {
+static int stacklevel (lua55_State *L) {
   int a = 0;
   lua55_pushinteger(L, cast_Integer(L->top.p - L->stack.p));
   lua55_pushinteger(L, stacksize(L));
@@ -1106,7 +1106,7 @@ static int stacklevel (lua_State *L) {
 }
 
 
-static int table_query (lua_State *L) {
+static int table_query (lua55_State *L) {
   const Table *t;
   int i = cast_int(lua55L_optinteger(L, 2, -1));
   unsigned int asize;
@@ -1148,7 +1148,7 @@ static int table_query (lua_State *L) {
 }
 
 
-static int gc_query (lua_State *L) {
+static int gc_query (lua55_State *L) {
   global_State *g = G(L);
   lua55_pushstring(L, g->gckind == KGC_INC ? "inc"
                   : g->gckind == KGC_GENMAJOR ? "genmajor"
@@ -1162,14 +1162,14 @@ static int gc_query (lua_State *L) {
 }
 
 
-static int test_codeparam (lua_State *L) {
+static int test_codeparam (lua55_State *L) {
   lua_Integer p = lua55L_checkinteger(L, 1);
   lua55_pushinteger(L, luaO_codeparam(cast_uint(p)));
   return 1;
 }
 
 
-static int test_applyparam (lua_State *L) {
+static int test_applyparam (lua55_State *L) {
   lua_Integer p = lua55L_checkinteger(L, 1);
   lua_Integer x = lua55L_checkinteger(L, 2);
   lua55_pushinteger(L, cast_Integer(luaO_applyparam(cast_byte(p), x)));
@@ -1177,7 +1177,7 @@ static int test_applyparam (lua_State *L) {
 }
 
 
-static int string_query (lua_State *L) {
+static int string_query (lua55_State *L) {
   stringtable *tb = &G(L)->strt;
   int s = cast_int(lua55L_optinteger(L, 1, 0)) - 1;
   if (s == -1) {
@@ -1199,7 +1199,7 @@ static int string_query (lua_State *L) {
 }
 
 
-static int getreftable (lua_State *L) {
+static int getreftable (lua55_State *L) {
   if (lua55_istable(L, 2))  /* is there a table as second argument? */
     return 2;  /* use it as the table */
   else
@@ -1207,7 +1207,7 @@ static int getreftable (lua_State *L) {
 }
 
 
-static int tref (lua_State *L) {
+static int tref (lua55_State *L) {
   int t = getreftable(L);
   int level = lua55_gettop(L);
   lua55L_checkany(L, 1);
@@ -1219,7 +1219,7 @@ static int tref (lua_State *L) {
 }
 
 
-static int getref (lua_State *L) {
+static int getref (lua55_State *L) {
   int t = getreftable(L);
   int level = lua55_gettop(L);
   lua55_rawgeti(L, t, lua55L_checkinteger(L, 1));
@@ -1228,7 +1228,7 @@ static int getref (lua_State *L) {
   return 1;
 }
 
-static int unref (lua_State *L) {
+static int unref (lua55_State *L) {
   int t = getreftable(L);
   int level = lua55_gettop(L);
   lua55L_unref(L, t, cast_int(lua55L_checkinteger(L, 1)));
@@ -1238,7 +1238,7 @@ static int unref (lua_State *L) {
 }
 
 
-static int upvalue (lua_State *L) {
+static int upvalue (lua55_State *L) {
   int n = cast_int(lua55L_checkinteger(L, 2));
   lua55L_checktype(L, 1, LUA_TFUNCTION);
   if (lua55_isnone(L, 3)) {
@@ -1255,7 +1255,7 @@ static int upvalue (lua_State *L) {
 }
 
 
-static int newuserdata (lua_State *L) {
+static int newuserdata (lua55_State *L) {
   size_t size = cast_sizet(lua55L_optinteger(L, 1, 0));
   int nuv = cast_int(lua55L_optinteger(L, 2, 0));
   char *p = cast_charp(lua55_newuserdatauv(L, size, nuv));
@@ -1264,21 +1264,21 @@ static int newuserdata (lua_State *L) {
 }
 
 
-static int pushuserdata (lua_State *L) {
+static int pushuserdata (lua55_State *L) {
   lua_Integer u = lua55L_checkinteger(L, 1);
   lua55_pushlightuserdata(L, cast_voidp(cast_sizet(u)));
   return 1;
 }
 
 
-static int udataval (lua_State *L) {
+static int udataval (lua55_State *L) {
   lua55_pushinteger(L, cast_st2S(cast_sizet(lua55_touserdata(L, 1))));
   return 1;
 }
 
 
-static int doonnewstack (lua_State *L) {
-  lua_State *L1 = lua55_newthread(L);
+static int doonnewstack (lua55_State *L) {
+  lua55_State *L1 = lua55_newthread(L);
   size_t l;
   const char *s = lua55L_checklstring(L, 1, &l);
   int status = lua55L_loadbuffer(L1, s, l, s);
@@ -1289,35 +1289,35 @@ static int doonnewstack (lua_State *L) {
 }
 
 
-static int s2d (lua_State *L) {
+static int s2d (lua55_State *L) {
   lua55_pushnumber(L, cast_num(*cast(const double *, lua55L_checkstring(L, 1))));
   return 1;
 }
 
 
-static int d2s (lua_State *L) {
+static int d2s (lua55_State *L) {
   double d = cast(double, lua55L_checknumber(L, 1));
   lua55_pushlstring(L, cast_charp(&d), sizeof(d));
   return 1;
 }
 
 
-static int num2int (lua_State *L) {
+static int num2int (lua55_State *L) {
   lua55_pushinteger(L, lua55_tointeger(L, 1));
   return 1;
 }
 
 
-static int makeseed (lua_State *L) {
+static int makeseed (lua55_State *L) {
   lua55_pushinteger(L, cast_Integer(lua55L_makeseed(L)));
   return 1;
 }
 
 
-static int newstate (lua_State *L) {
+static int newstate (lua55_State *L) {
   void *ud;
   lua_Alloc f = lua55_getallocf(L, &ud);
-  lua_State *L1 = lua55_newstate(f, ud, 0);
+  lua55_State *L1 = lua55_newstate(f, ud, 0);
   if (L1) {
     lua55_atpanic(L1, tpanic);
     lua55_pushlightuserdata(L, L1);
@@ -1328,15 +1328,15 @@ static int newstate (lua_State *L) {
 }
 
 
-static lua_State *getstate (lua_State *L) {
-  lua_State *L1 = cast(lua_State *, lua55_touserdata(L, 1));
+static lua55_State *getstate (lua55_State *L) {
+  lua55_State *L1 = cast(lua55_State *, lua55_touserdata(L, 1));
   lua55L_argcheck(L, L1 != NULL, 1, "state expected");
   return L1;
 }
 
 
-static int loadlib (lua_State *L) {
-  lua_State *L1 = getstate(L);
+static int loadlib (lua55_State *L) {
+  lua55_State *L1 = getstate(L);
   int load = cast_int(lua55L_checkinteger(L, 2));
   int preload = cast_int(lua55L_checkinteger(L, 3));
   lua55L_openselectedlibs(L1, load, preload);
@@ -1349,14 +1349,14 @@ static int loadlib (lua_State *L) {
   return 0;
 }
 
-static int closestate (lua_State *L) {
-  lua_State *L1 = getstate(L);
+static int closestate (lua55_State *L) {
+  lua55_State *L1 = getstate(L);
   lua55_close(L1);
   return 0;
 }
 
-static int doremote (lua_State *L) {
-  lua_State *L1 = getstate(L);
+static int doremote (lua55_State *L) {
+  lua55_State *L1 = getstate(L);
   size_t lcode;
   const char *code = lua55L_checklstring(L, 2, &lcode);
   int status;
@@ -1380,19 +1380,19 @@ static int doremote (lua_State *L) {
 }
 
 
-static int log2_aux (lua_State *L) {
+static int log2_aux (lua55_State *L) {
   unsigned int x = (unsigned int)lua55L_checkinteger(L, 1);
   lua55_pushinteger(L, luaO_ceillog2(x));
   return 1;
 }
 
 
-struct Aux { jmp_buf jb; const char *paniccode; lua_State *L; };
+struct Aux { jmp_buf jb; const char *paniccode; lua55_State *L; };
 
 /*
 ** does a long-jump back to "main program".
 */
-static int panicback (lua_State *L) {
+static int panicback (lua55_State *L) {
   struct Aux *b;
   lua55_checkstack(L, 1);  /* open space for 'Aux' struct */
   lua55_getfield(L, LUA_REGISTRYINDEX, "_jmpbuf");  /* get 'Aux' struct */
@@ -1403,10 +1403,10 @@ static int panicback (lua_State *L) {
   return 1;  /* to avoid warnings */
 }
 
-static int checkpanic (lua_State *L) {
+static int checkpanic (lua55_State *L) {
   struct Aux b;
   void *ud;
-  lua_State *L1;
+  lua55_State *L1;
   const char *code = lua55L_checkstring(L, 1);
   lua_Alloc f = lua55_getallocf(L, &ud);
   b.paniccode = lua55L_optstring(L, 2, "");
@@ -1432,7 +1432,7 @@ static int checkpanic (lua_State *L) {
 }
 
 
-static int externKstr (lua_State *L) {
+static int externKstr (lua55_State *L) {
   size_t len;
   const char *s = lua55L_checklstring(L, 1, &len);
   lua55_pushexternalstring(L, s, len, NULL, NULL);
@@ -1445,7 +1445,7 @@ static int externKstr (lua_State *L) {
 ** create an external string using that buffer. Use the allocation
 ** function from Lua to create and free the buffer.
 */
-static int externstr (lua_State *L) {
+static int externstr (lua55_State *L) {
   size_t len;
   const char *s = lua55L_checklstring(L, 1, &len);
   void *ud;
@@ -1472,7 +1472,7 @@ static int externstr (lua_State *L) {
 */
 
 
-static void sethookaux (lua_State *L, int mask, int count, const char *code);
+static void sethookaux (lua55_State *L, int mask, int count, const char *code);
 
 static const char *const delimits = " \t\n,;";
 
@@ -1486,7 +1486,7 @@ static void skip (const char **pc) {
   }
 }
 
-static int getnum_aux (lua_State *L, lua_State *L1, const char **pc) {
+static int getnum_aux (lua55_State *L, lua55_State *L1, const char **pc) {
   int res = 0;
   int sig = 1;
   skip(pc);
@@ -1521,7 +1521,7 @@ static int getnum_aux (lua_State *L, lua_State *L1, const char **pc) {
   return sig*res;
 }
 
-static const char *getstring_aux (lua_State *L, char *buff, const char **pc) {
+static const char *getstring_aux (lua55_State *L, char *buff, const char **pc) {
   int i = 0;
   skip(pc);
   if (**pc == '"' || **pc == '\'') {  /* quoted string? */
@@ -1541,7 +1541,7 @@ static const char *getstring_aux (lua_State *L, char *buff, const char **pc) {
 }
 
 
-static int getindex_aux (lua_State *L, lua_State *L1, const char **pc) {
+static int getindex_aux (lua55_State *L, lua55_State *L1, const char **pc) {
   skip(pc);
   switch (*(*pc)++) {
     case 'R': return LUA_REGISTRYINDEX;
@@ -1564,7 +1564,7 @@ static const char *const statcodes[] = {"OK", "YIELD", "ERRRUN",
 ** Avoid these stat codes from being collected, to avoid possible
 ** memory error when pushing them.
 */
-static void regcodes (lua_State *L) {
+static void regcodes (lua55_State *L) {
   unsigned int i;
   for (i = 0; i < sizeof(statcodes) / sizeof(statcodes[0]); i++) {
     lua55_pushboolean(L, 1);
@@ -1580,8 +1580,8 @@ static void regcodes (lua_State *L) {
 #define getindex	(getindex_aux(L, L1, &pc))
 
 
-static int testC (lua_State *L);
-static int Cfunck (lua_State *L, int status, lua_KContext ctx);
+static int testC (lua55_State *L);
+static int Cfunck (lua55_State *L, int status, lua_KContext ctx);
 
 /*
 ** arithmetic operation encoding for 'arith' instruction
@@ -1593,7 +1593,7 @@ static int Cfunck (lua_State *L, int status, lua_KContext ctx);
 */
 static const char ops[] = "+-*%^/\\&|~<>_!";
 
-static int runC (lua_State *L, lua_State *L1, const char *pc) {
+static int runC (lua55_State *L, lua55_State *L1, const char *pc) {
   char buff[300];
   int status = 0;
   if (pc == NULL) return lua55L_error(L, "attempt to runC null script");
@@ -1966,8 +1966,8 @@ static struct X { int x; } x;
     else if EQ("xmove") {
       int f = getindex;
       int t = getindex;
-      lua_State *fs = (f == 0) ? L1 : lua55_tothread(L1, f);
-      lua_State *ts = (t == 0) ? L1 : lua55_tothread(L1, t);
+      lua55_State *fs = (f == 0) ? L1 : lua55_tothread(L1, f);
+      lua55_State *ts = (t == 0) ? L1 : lua55_tothread(L1, t);
       int n = getnum;
       if (n == 0) n = lua55_gettop(fs);
       lua55_xmove(fs, ts, n);
@@ -1999,8 +1999,8 @@ static struct X { int x; } x;
 }
 
 
-static int testC (lua_State *L) {
-  lua_State *L1;
+static int testC (lua55_State *L) {
+  lua55_State *L1;
   const char *pc;
   if (lua55_isuserdata(L, 1)) {
     L1 = getstate(L);
@@ -2018,12 +2018,12 @@ static int testC (lua_State *L) {
 }
 
 
-static int Cfunc (lua_State *L) {
+static int Cfunc (lua55_State *L) {
   return runC(L, L, lua55_tostring(L, lua55_upvalueindex(1)));
 }
 
 
-static int Cfunck (lua_State *L, int status, lua_KContext ctx) {
+static int Cfunck (lua55_State *L, int status, lua_KContext ctx) {
   lua55_pushstring(L, statcodes[status]);
   lua55_setglobal(L, "status");
   lua55_pushinteger(L, cast_Integer(ctx));
@@ -2032,7 +2032,7 @@ static int Cfunck (lua_State *L, int status, lua_KContext ctx) {
 }
 
 
-static int makeCfunc (lua_State *L) {
+static int makeCfunc (lua55_State *L) {
   lua55L_checkstring(L, 1);
   lua55_pushcclosure(L, Cfunc, lua55_gettop(L));
   return 1;
@@ -2051,7 +2051,7 @@ static int makeCfunc (lua_State *L) {
 /*
 ** C hook that runs the C script stored in registry.C_HOOK[L]
 */
-static void Chook (lua_State *L, lua_Debug *ar) {
+static void Chook (lua55_State *L, lua_Debug *ar) {
   const char *scpt;
   const char *const events [] = {"call", "ret", "line", "count", "tailcall"};
   lua55_getfield(L, LUA_REGISTRYINDEX, "C_HOOK");
@@ -2068,7 +2068,7 @@ static void Chook (lua_State *L, lua_Debug *ar) {
 /*
 ** sets 'registry.C_HOOK[L] = scpt' and sets 'Chook' as a hook
 */
-static void sethookaux (lua_State *L, int mask, int count, const char *scpt) {
+static void sethookaux (lua55_State *L, int mask, int count, const char *scpt) {
   if (*scpt == '\0') {  /* no script? */
     lua55_sethook(L, NULL, 0, 0);  /* turn off hooks */
     return;
@@ -2087,7 +2087,7 @@ static void sethookaux (lua_State *L, int mask, int count, const char *scpt) {
 }
 
 
-static int sethook (lua_State *L) {
+static int sethook (lua55_State *L) {
   if (lua55_isnoneornil(L, 1))
     lua55_sethook(L, NULL, 0, 0);  /* turn off hooks */
   else {
@@ -2105,9 +2105,9 @@ static int sethook (lua_State *L) {
 }
 
 
-static int coresume (lua_State *L) {
+static int coresume (lua55_State *L) {
   int status, nres;
-  lua_State *co = lua55_tothread(L, 1);
+  lua55_State *co = lua55_tothread(L, 1);
   lua55L_argcheck(L, co, 1, "coroutine expected");
   status = lua55_resume(co, L, 0, &nres);
   if (status != LUA_OK && status != LUA_YIELD) {
@@ -2130,7 +2130,7 @@ static int coresume (lua_State *L) {
 #include <unistd.h>
 #include <fcntl.h>
 
-static int nonblock (lua_State *L) {
+static int nonblock (lua55_State *L) {
   FILE *f = cast(luaL_Stream*, lua55L_checkudata(L, 1, LUA_FILEHANDLE))->f;
   int fd = fileno(f);
   int flags = fcntl(fd, F_GETFL, 0);
@@ -2205,7 +2205,7 @@ static void checkfinalmem (void) {
 }
 
 
-int luaB_opentests (lua_State *L) {
+int luaB_opentests (lua55_State *L) {
   void *ud;
   lua_Alloc f = lua55_getallocf(L, &ud);
   lua55_atpanic(L, &tpanic);

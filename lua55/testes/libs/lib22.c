@@ -5,7 +5,7 @@
 #include "lua.h"
 #include "lauxlib.h"
 
-static int id (lua_State *L) {
+static int id (lua55_State *L) {
   lua_pushboolean(L, 1);
   lua_insert(L, 1);
   return lua_gettop(L);
@@ -25,7 +25,7 @@ static void *t_freestr (void *ud, void *ptr, size_t osize, size_t nsize) {
 }
 
 
-static int newstr (lua_State *L) {
+static int newstr (lua55_State *L) {
   size_t len;
   const char *str = luaL_checklstring(L, 1, &len);
   void *ud;
@@ -48,7 +48,7 @@ static int newstr (lua_State *L) {
 ** will test that the library code is still available (to deallocate
 ** this string) when closing the state.
 */
-static void initstr (lua_State *L) {
+static void initstr (lua55_State *L) {
   lua_pushcfunction(L, newstr);
   lua_pushstring(L,
      "012345678901234567890123456789012345678901234567890123456789");
@@ -64,7 +64,7 @@ static const struct luaL_Reg funcs[] = {
 };
 
 
-LUAMOD_API int luaopen_lib2 (lua_State *L) {
+LUAMOD_API int luaopen_lib2 (lua55_State *L) {
   lua_settop(L, 2);
   lua_setglobal(L, "y");  /* y gets 2nd parameter */
   lua_setglobal(L, "x");  /* x gets 1st parameter */

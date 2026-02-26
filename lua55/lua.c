@@ -33,7 +33,7 @@
 #define LUA_INITVARVERSION	LUA_INIT_VAR LUA_VERSUFFIX
 
 
-static lua_State *globalL = NULL;
+static lua55_State *globalL = NULL;
 
 static const char *progname = LUA_PROGNAME;
 
@@ -61,7 +61,7 @@ static void setsignal (int sig, void (*handler)(int)) {
 /*
 ** Hook set by signal function to stop the interpreter.
 */
-static void lstop (lua_State *L, lua_Debug *ar) {
+static void lstop (lua55_State *L, lua_Debug *ar) {
   (void)ar;  /* unused arg. */
   lua55_sethook(L, NULL, 0, 0);  /* reset hook */
   lua55L_error(L, "interrupted!");
@@ -118,7 +118,7 @@ static void l_message (const char *pname, const char *msg) {
 ** Check whether 'status' is not OK and, if so, prints the error
 ** message on the top of the stack.
 */
-static int report (lua_State *L, int status) {
+static int report (lua55_State *L, int status) {
   if (status != LUA_OK) {
     const char *msg = lua55_tostring(L, -1);
     if (msg == NULL)
@@ -133,7 +133,7 @@ static int report (lua_State *L, int status) {
 /*
 ** Message handler used to run all chunks
 */
-static int msghandler (lua_State *L) {
+static int msghandler (lua55_State *L) {
   const char *msg = lua55_tostring(L, 1);
   if (msg == NULL) {  /* is error object not a string? */
     if (lua55L_callmeta(L, 1, "__tostring") &&  /* does it have a metamethod */
@@ -152,7 +152,7 @@ static int msghandler (lua_State *L) {
 ** Interface to 'lua55_pcall', which sets appropriate message function
 ** and C-signal handler. Used to run all chunks.
 */
-static int docall (lua_State *L, int narg, int nres) {
+static int docall (lua55_State *L, int narg, int nres) {
   int status;
   int base = lua55_gettop(L) - narg;  /* function index */
   lua55_pushcfunction(L, msghandler);  /* push message handler */
@@ -182,7 +182,7 @@ static void print_version (void) {
 ** (If there is no interpreter's name either, 'script' is -1, so
 ** table sizes are zero.)
 */
-static void createargtable (lua_State *L, char **argv, int argc, int script) {
+static void createargtable (lua55_State *L, char **argv, int argc, int script) {
   int i, narg;
   narg = argc - (script + 1);  /* number of positive indices */
   lua55_createtable(L, narg, script + 1);
@@ -194,18 +194,18 @@ static void createargtable (lua_State *L, char **argv, int argc, int script) {
 }
 
 
-static int dochunk (lua_State *L, int status) {
+static int dochunk (lua55_State *L, int status) {
   if (status == LUA_OK) status = docall(L, 0, 0);
   return report(L, status);
 }
 
 
-static int dofile (lua_State *L, const char *name) {
+static int dofile (lua55_State *L, const char *name) {
   return dochunk(L, lua55L_loadfile(L, name));
 }
 
 
-static int dostring (lua_State *L, const char *s, const char *name) {
+static int dostring (lua55_State *L, const char *s, const char *name) {
   return dochunk(L, lua55L_loadbuffer(L, s, strlen(s), name));
 }
 
@@ -215,7 +215,7 @@ static int dostring (lua_State *L, const char *s, const char *name) {
 ** If there is no explicit modname and globname contains a '-', cut
 ** the suffix after '-' (the "version") to make the global name.
 */
-static int dolibrary (lua_State *L, char *globname) {
+static int dolibrary (lua55_State *L, char *globname) {
   int status;
   char *suffix = NULL;
   char *modname = strchr(globname, '=');
@@ -242,7 +242,7 @@ static int dolibrary (lua_State *L, char *globname) {
 /*
 ** Push on the stack the contents of table 'arg' from 1 to #arg
 */
-static int pushargs (lua_State *L) {
+static int pushargs (lua55_State *L) {
   int i, n;
   if (lua55_getglobal(L, "arg") != LUA_TTABLE)
     lua55L_error(L, "'arg' is not a table");
@@ -255,7 +255,7 @@ static int pushargs (lua_State *L) {
 }
 
 
-static int handle_script (lua_State *L, char **argv) {
+static int handle_script (lua55_State *L, char **argv) {
   int status;
   const char *fname = argv[0];
   if (strcmp(fname, "-") == 0 && strcmp(argv[-1], "--") != 0)
@@ -347,7 +347,7 @@ static int collectargs (char **argv, int *first) {
 ** 'W', which also affects the state.
 ** Returns 0 if some code raises an error.
 */
-static int runargs (lua_State *L, char **argv, int n) {
+static int runargs (lua55_State *L, char **argv, int n) {
   int i;
   lua55_warning(L, "@off", 0);  /* by default, Lua stand-alone has warnings off */
   for (i = 1; i < n; i++) {
@@ -374,7 +374,7 @@ static int runargs (lua_State *L, char **argv, int n) {
 }
 
 
-static int handle_luainit (lua_State *L) {
+static int handle_luainit (lua55_State *L) {
   const char *name = "=" LUA_INITVARVERSION;
   const char *init = getenv(name + 1);
   if (init == NULL) {
@@ -497,7 +497,7 @@ static void lua_freeline (char *line) {
 
 #include <dlfcn.h>
 
-static void lua_initreadline (lua_State *L) {
+static void lua_initreadline (lua55_State *L) {
   void *lib = dlopen(LUA_READLINELIB, RTLD_NOW | RTLD_LOCAL);
   if (lib == NULL)
     lua55_warning(L, "library '" LUA_READLINELIB "' not found", 0);
@@ -530,7 +530,7 @@ static void lua_initreadline (lua_State *L) {
 ** the string (or nil, if using the default value) on the stack, to keep
 ** it anchored.
 */
-static const char *get_prompt (lua_State *L, int firstline) {
+static const char *get_prompt (lua55_State *L, int firstline) {
   if (lua55_getglobal(L, firstline ? "_PROMPT" : "_PROMPT2") == LUA_TNIL)
     return (firstline ? LUA_PROMPT : LUA_PROMPT2);  /* use the default */
   else {  /* apply 'tostring' over the value */
@@ -550,7 +550,7 @@ static const char *get_prompt (lua_State *L, int firstline) {
 ** message at the top of the stack ends with the above mark for
 ** incomplete statements.
 */
-static int incomplete (lua_State *L, int status) {
+static int incomplete (lua55_State *L, int status) {
   if (status == LUA_ERRSYNTAX) {
     size_t lmsg;
     const char *msg = lua55_tolstring(L, -1, &lmsg);
@@ -564,7 +564,7 @@ static int incomplete (lua_State *L, int status) {
 /*
 ** Prompt the user, read a line, and push it into the Lua stack.
 */
-static int pushline (lua_State *L, int firstline) {
+static int pushline (lua55_State *L, int firstline) {
   char buffer[LUA_MAXINPUT];
   size_t l;
   const char *prmt = get_prompt(L, firstline);
@@ -585,7 +585,7 @@ static int pushline (lua_State *L, int firstline) {
 ** Try to compile line on the stack as 'return <line>;'; on return, stack
 ** has either compiled chunk or original line (if compilation failed).
 */
-static int addreturn (lua_State *L) {
+static int addreturn (lua55_State *L) {
   const char *line = lua55_tostring(L, -1);  /* original line */
   const char *retline = lua55_pushfstring(L, "return %s;", line);
   int status = lua55L_loadbuffer(L, retline, strlen(retline), "=stdin");
@@ -614,7 +614,7 @@ static void checklocal (const char *line) {
 ** for an incomplete statement. Start with first line already read in
 ** the stack.
 */
-static int multiline (lua_State *L) {
+static int multiline (lua55_State *L) {
   size_t len;
   const char *line = lua55_tolstring(L, 1, &len);  /* get first line */
   checklocal(line);
@@ -637,7 +637,7 @@ static int multiline (lua_State *L) {
 ** the final status of load/call with the resulting function (if any)
 ** in the top of the stack.
 */
-static int loadline (lua_State *L) {
+static int loadline (lua55_State *L) {
   const char *line;
   int status;
   lua55_settop(L, 0);
@@ -657,7 +657,7 @@ static int loadline (lua_State *L) {
 /*
 ** Prints (calling the Lua 'print' function) any values on the stack
 */
-static void l_print (lua_State *L) {
+static void l_print (lua55_State *L) {
   int n = lua55_gettop(L);
   if (n > 0) {  /* any result to be printed? */
     lua55L_checkstack(L, LUA_MINSTACK, "too many results to print");
@@ -674,7 +674,7 @@ static void l_print (lua_State *L) {
 ** Do the REPL: repeatedly read (load) a line, evaluate (call) it, and
 ** print any results.
 */
-static void doREPL (lua_State *L) {
+static void doREPL (lua55_State *L) {
   int status;
   const char *oldprogname = progname;
   progname = NULL;  /* no 'progname' on errors in interactive mode */
@@ -701,7 +701,7 @@ static void doREPL (lua_State *L) {
 ** Main body of stand-alone interpreter (to be called in protected mode).
 ** Reads the options and handles them all.
 */
-static int pmain (lua_State *L) {
+static int pmain (lua55_State *L) {
   int argc = (int)lua55_tointeger(L, 1);
   char **argv = (char **)lua55_touserdata(L, 2);
   int script;
@@ -748,7 +748,7 @@ static int pmain (lua_State *L) {
 
 int main (int argc, char **argv) {
   int status, result;
-  lua_State *L = lua55L_newstate();  /* create state */
+  lua55_State *L = lua55L_newstate();  /* create state */
   if (L == NULL) {
     l_message(argv[0], "cannot create state: not enough memory");
     return EXIT_FAILURE;

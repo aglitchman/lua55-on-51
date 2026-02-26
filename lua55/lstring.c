@@ -92,7 +92,7 @@ static void tablerehash (TString **vect, int osize, int nsize) {
 ** (This can degrade performance, but any non-zero size should work
 ** correctly.)
 */
-void luaS_resize (lua_State *L, int nsize) {
+void luaS_resize (lua55_State *L, int nsize) {
   stringtable *tb = &G(L)->strt;
   int osize = tb->size;
   TString **newvect;
@@ -130,7 +130,7 @@ void luaS_clearcache (global_State *g) {
 /*
 ** Initialize the string table and the string cache
 */
-void luaS_init (lua_State *L) {
+void luaS_init (lua55_State *L) {
   global_State *g = G(L);
   int i, j;
   stringtable *tb = &G(L)->strt;
@@ -164,7 +164,7 @@ size_t luaS_sizelngstr (size_t len, int kind) {
 /*
 ** creates a new string object
 */
-static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
+static TString *createstrobj (lua55_State *L, size_t totalsize, lu_byte tag,
                               unsigned h) {
   TString *ts;
   GCObject *o;
@@ -176,7 +176,7 @@ static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
 }
 
 
-TString *luaS_createlngstrobj (lua_State *L, size_t l) {
+TString *luaS_createlngstrobj (lua55_State *L, size_t l) {
   size_t totalsize = luaS_sizelngstr(l, LSTRREG);
   TString *ts = createstrobj(L, totalsize, LUA_VLNGSTR, G(L)->seed);
   ts->u.lnglen = l;
@@ -187,7 +187,7 @@ TString *luaS_createlngstrobj (lua_State *L, size_t l) {
 }
 
 
-void luaS_remove (lua_State *L, TString *ts) {
+void luaS_remove (lua55_State *L, TString *ts) {
   stringtable *tb = &G(L)->strt;
   TString **p = &tb->hash[lmod(ts->hash, tb->size)];
   while (*p != ts)  /* find previous element */
@@ -197,7 +197,7 @@ void luaS_remove (lua_State *L, TString *ts) {
 }
 
 
-static void growstrtab (lua_State *L, stringtable *tb) {
+static void growstrtab (lua55_State *L, stringtable *tb) {
   if (l_unlikely(tb->nuse == INT_MAX)) {  /* too many strings? */
     luaC_fullgc(L, 1);  /* try to free some... */
     if (tb->nuse == INT_MAX)  /* still too many? */
@@ -211,7 +211,7 @@ static void growstrtab (lua_State *L, stringtable *tb) {
 /*
 ** Checks whether short string exists and reuses it or creates a new one.
 */
-static TString *internshrstr (lua_State *L, const char *str, size_t l) {
+static TString *internshrstr (lua55_State *L, const char *str, size_t l) {
   TString *ts;
   global_State *g = G(L);
   stringtable *tb = &g->strt;
@@ -246,7 +246,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
 /*
 ** new string (with explicit length)
 */
-TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
+TString *luaS_newlstr (lua55_State *L, const char *str, size_t l) {
   if (l <= LUAI_MAXSHORTLEN)  /* short string? */
     return internshrstr(L, str, l);
   else {
@@ -266,7 +266,7 @@ TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
 ** only zero-terminated strings, so it is safe to use 'strcmp' to
 ** check hits.
 */
-TString *luaS_new (lua_State *L, const char *str) {
+TString *luaS_new (lua55_State *L, const char *str) {
   unsigned int i = point2uint(str) % STRCACHE_N;  /* hash */
   int j;
   TString **p = G(L)->strcache[i];
@@ -283,7 +283,7 @@ TString *luaS_new (lua_State *L, const char *str) {
 }
 
 
-Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
+Udata *luaS_newudata (lua55_State *L, size_t s, unsigned short nuvalue) {
   Udata *u;
   int i;
   GCObject *o;
@@ -308,14 +308,14 @@ struct NewExt {
 };
 
 
-static void f_newext (lua_State *L, void *ud) {
+static void f_newext (lua55_State *L, void *ud) {
   struct NewExt *ne = cast(struct NewExt *, ud);
   size_t size = luaS_sizelngstr(0, ne->kind);
   ne->ts = createstrobj(L, size, LUA_VLNGSTR, G(L)->seed);
 }
 
 
-TString *luaS_newextlstr (lua_State *L,
+TString *luaS_newextlstr (lua55_State *L,
 	          const char *s, size_t len, lua_Alloc falloc, void *ud) {
   struct NewExt ne;
   if (!falloc) {
@@ -341,7 +341,7 @@ TString *luaS_newextlstr (lua_State *L,
 /*
 ** Normalize an external string: If it is short, internalize it.
 */
-TString *luaS_normstr (lua_State *L, TString *ts) {
+TString *luaS_normstr (lua55_State *L, TString *ts) {
   size_t len = ts->u.lnglen;
   if (len > LUAI_MAXSHORTLEN)
     return ts;  /* long string; keep the original */

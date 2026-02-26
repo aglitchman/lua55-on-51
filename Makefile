@@ -25,9 +25,10 @@ LUAU_COMPILE = $(LUAU_DIR)/build/release/luau-compile
 COMPAT_DIR = compat
 COMPAT_LIB = $(COMPAT_DIR)/libcompat.a
 COMPAT_RUNTIME_LIB = $(COMPAT_DIR)/libcompat_runtime.a
+COMPAT55_LIB = $(COMPAT_DIR)/libcompat55.a
 
-.PHONY: all lua51-lib lua55-lib lua55 luau-lib compat-lib compat-runtime-lib \
-        example-lua51 example-luau example-luau-runtime precompile clean
+.PHONY: all lua51-lib lua55-lib lua55 luau-lib compat-lib compat-runtime-lib compat55-lib \
+        example-lua51 example-lua55 example-luau example-luau-runtime precompile clean
 
 all: example-lua51 example-luau precompile example-luau-runtime
 
@@ -57,7 +58,21 @@ compat-lib: luau-lib
 	ar rcs $(COMPAT_LIB) $(COMPAT_DIR)/luau_bridge.o $(COMPAT_DIR)/lua51_compat.o
 
 example-lua51: lua51-lib
-	$(CC) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(LUA51_LIB) -lm -ldl -o example/test_lua51
+	$(CC) $(CFLAGS_RELEASE) -I$(LUA51_SRC) example/main.c $(LUA51_LIB) -lm -ldl -o example/test_lua51
+
+# Lua 5.5 compat library
+compat55-lib: lua55-lib
+	# First compile the compat source (force C mode since .cpp extension is used)
+	$(CC) $(CFLAGS) -x c -c -I. $(COMPAT_DIR)/lua55_compat.cpp -o $(COMPAT_DIR)/lua55_compat.o
+	# Extract all object files from lua55 library
+	ar x $(LUA55_LIB)
+	# Combine with compat object
+	ar rcs $(COMPAT55_LIB) $(COMPAT_DIR)/lua55_compat.o *.o
+	rm -f *.o
+
+# Example built with Lua 5.5
+example-lua55: lua55-lib compat55-lib
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(COMPAT55_LIB) -lm -ldl -o example/test_lua55
 
 example-luau: compat-lib
 	$(CXX) $(CFLAGS_RELEASE) -I$(LUA51_SRC) example/main.c $(COMPAT_LIB) $(LUAU_LIBS) -lm -lpthread -o example/test_luau

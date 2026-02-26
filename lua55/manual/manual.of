@@ -2570,7 +2570,7 @@ called the @def{Lua state}.
 
 Each Lua state has one or more threads,
 which correspond to independent, cooperative lines of execution.
-The type @Lid{lua_State} (despite its name) refers to a thread.
+The type @Lid{lua55_State} (despite its name) refers to a thread.
 (Indirectly, through the thread, it also refers to the
 Lua state associated to the thread.)
 
@@ -2931,7 +2931,7 @@ of the original function.
 
 As an illustration, consider the following function:
 @verbatim{
-int original_function (lua_State *L) {
+int original_function (lua55_State *L) {
   ...     /* code 1 */
   status = lua_pcall(L, n, m, h);  /* calls Lua */
   ...     /* code 2 */
@@ -2941,11 +2941,11 @@ Now we want to allow
 the Lua code being run by @Lid{lua_pcall} to yield.
 First, we can rewrite our function like here:
 @verbatim{
-int k (lua_State *L, int status, lua_KContext ctx) {
+int k (lua55_State *L, int status, lua_KContext ctx) {
   ...  /* code 2 */
 }
 
-int original_function (lua_State *L) {
+int original_function (lua55_State *L) {
   ...     /* code 1 */
   return k(L, lua_pcall(L, n, m, h), ctx);
 }
@@ -2961,7 +2961,7 @@ being executed by @Lid{lua_pcall} gets interrupted in some way
 so we rewrite the code as here,
 replacing @Lid{lua_pcall} by @Lid{lua_pcallk}:
 @verbatim{
-int original_function (lua_State *L) {
+int original_function (lua55_State *L) {
   ...     /* code 1 */
   return k(L, lua_pcallk(L, n, m, h, ctx2, k), ctx1);
 }
@@ -3039,7 +3039,7 @@ either directly or through metamethods,
 and therefore may raise any errors.
 
 
-@APIEntry{int lua_absindex (lua_State *L, int idx);|
+@APIEntry{int lua_absindex (lua55_State *L, int idx);|
 @apii{0,0,-}
 
 Converts the @x{acceptable index} @id{idx}
@@ -3111,7 +3111,7 @@ that @T{free(NULL)} has no effect and that
 
 }
 
-@APIEntry{void lua_arith (lua_State *L, int op);|
+@APIEntry{void lua_arith (lua55_State *L, int op);|
 @apii{2|1,1,e}
 
 Performs an arithmetic or bitwise operation over the two values
@@ -3144,14 +3144,14 @@ The value of @id{op} must be one of the following constants:
 
 }
 
-@APIEntry{lua_CFunction lua_atpanic (lua_State *L, lua_CFunction panicf);|
+@APIEntry{lua_CFunction lua_atpanic (lua55_State *L, lua_CFunction panicf);|
 @apii{0,0,-}
 
 Sets a new panic function and returns the old one @see{C-error}.
 
 }
 
-@APIEntry{void lua_call (lua_State *L, int nargs, int nresults);|
+@APIEntry{void lua_call (lua55_State *L, int nargs, int nresults);|
 @apii{nargs+1,nresults,e}
 
 Calls a function.
@@ -3211,7 +3211,7 @@ This is considered good programming practice.
 }
 
 @APIEntry{
-void lua_callk (lua_State *L,
+void lua_callk (lua55_State *L,
                 int nargs,
                 int nresults,
                 lua_KContext ctx,
@@ -3223,7 +3223,7 @@ but allows the called function to yield @see{continuations}.
 
 }
 
-@APIEntry{typedef int (*lua_CFunction) (lua_State *L);|
+@APIEntry{typedef int (*lua_CFunction) (lua55_State *L);|
 
 Type for @N{C functions}.
 
@@ -3247,7 +3247,7 @@ many results.
 As an example, the following function receives a variable number
 of numeric arguments and returns their average and their sum:
 @verbatim{
-static int foo (lua_State *L) {
+static int foo (lua55_State *L) {
   int n = lua_gettop(L);    /* number of arguments */
   lua_Number sum = 0.0;
   int i;
@@ -3269,7 +3269,7 @@ static int foo (lua_State *L) {
 }
 
 
-@APIEntry{int lua_checkstack (lua_State *L, int n);|
+@APIEntry{int lua_checkstack (lua55_State *L, int n);|
 @apii{0,0,-}
 
 Ensures that the stack has space for at least @id{n} extra elements,
@@ -3285,7 +3285,7 @@ it is left unchanged.
 
 }
 
-@APIEntry{void lua_close (lua_State *L);|
+@APIEntry{void lua_close (lua55_State *L);|
 @apii{0,0,-}
 
 Close all active to-be-closed variables in the main thread,
@@ -3301,7 +3301,7 @@ will probably need to close states as soon as they are not needed.
 
 }
 
-@APIEntry{void lua_closeslot (lua_State *L, int index);|
+@APIEntry{void lua_closeslot (lua55_State *L, int index);|
 @apii{0,0,e}
 
 Close the to-be-closed slot at the given index and set its value to @nil.
@@ -3313,7 +3313,7 @@ when called through this function.
 
 }
 
-@APIEntry{int lua_closethread (lua_State *L, lua_State *from);|
+@APIEntry{int lua_closethread (lua55_State *L, lua55_State *from);|
 @apii{0,?,-}
 
 Resets a thread, cleaning its call stack and closing all pending
@@ -3340,7 +3340,7 @@ The thread must be running inside a resume.
 
 }
 
-@APIEntry{int lua_compare (lua_State *L, int index1, int index2, int op);|
+@APIEntry{int lua_compare (lua55_State *L, int index1, int index2, int op);|
 @apii{0,0,e}
 
 Compares two Lua values.
@@ -3362,7 +3362,7 @@ The value of @id{op} must be one of the following constants:
 
 }
 
-@APIEntry{void lua_concat (lua_State *L, int n);|
+@APIEntry{void lua_concat (lua55_State *L, int n);|
 @apii{n,1,e}
 
 Concatenates the @id{n} values at the top of the stack,
@@ -3375,7 +3375,7 @@ Concatenation is performed following the usual semantics of Lua
 
 }
 
-@APIEntry{void lua_copy (lua_State *L, int fromidx, int toidx);|
+@APIEntry{void lua_copy (lua55_State *L, int fromidx, int toidx);|
 @apii{0,0,-}
 
 Copies the element at index @id{fromidx}
@@ -3385,7 +3385,7 @@ Values at other positions are not affected.
 
 }
 
-@APIEntry{void lua_createtable (lua_State *L, int nseq, int nrec);|
+@APIEntry{void lua_createtable (lua55_State *L, int nseq, int nrec);|
 @apii{0,1,m}
 
 Creates a new empty table and pushes it onto the stack.
@@ -3400,7 +3400,7 @@ Otherwise you should use the function @Lid{lua_newtable}.
 
 }
 
-@APIEntry{int lua_dump (lua_State *L,
+@APIEntry{int lua_dump (lua55_State *L,
                         lua_Writer writer,
                         void *data,
                         int strip);|
@@ -3434,7 +3434,7 @@ call to the writer;
 
 }
 
-@APIEntry{int lua_error (lua_State *L);|
+@APIEntry{int lua_error (lua55_State *L);|
 @apii{1,0,v}
 
 Raises a Lua error,
@@ -3445,7 +3445,7 @@ and therefore never returns
 
 }
 
-@APIEntry{int lua_gc (lua_State *L, int what, ...);|
+@APIEntry{int lua_gc (lua55_State *L, int what, ...);|
 @apii{0,0,-}
 
 Controls the garbage collector.
@@ -3519,7 +3519,7 @@ This function should not be called by a finalizer.
 
 }
 
-@APIEntry{lua_Alloc lua_getallocf (lua_State *L, void **ud);|
+@APIEntry{lua_Alloc lua_getallocf (lua55_State *L, void **ud);|
 @apii{0,0,-}
 
 Returns the @x{memory-allocator function} of a given state.
@@ -3528,7 +3528,7 @@ opaque pointer given when the memory-allocator function was set.
 
 }
 
-@APIEntry{int lua_getfield (lua_State *L, int index, const char *k);|
+@APIEntry{int lua_getfield (lua55_State *L, int index, const char *k);|
 @apii{0,1,e}
 
 Pushes onto the stack the value @T{t[k]},
@@ -3540,7 +3540,7 @@ Returns the type of the pushed value.
 
 }
 
-@APIEntry{void *lua_getextraspace (lua_State *L);|
+@APIEntry{void *lua_getextraspace (lua55_State *L);|
 @apii{0,0,-}
 
 Returns a pointer to a raw memory area associated with the
@@ -3557,7 +3557,7 @@ but you can recompile Lua with a different size for this area.
 
 }
 
-@APIEntry{int lua_getglobal (lua_State *L, const char *name);|
+@APIEntry{int lua_getglobal (lua55_State *L, const char *name);|
 @apii{0,1,e}
 
 Pushes onto the stack the value of the global @id{name}.
@@ -3565,7 +3565,7 @@ Returns the type of that value.
 
 }
 
-@APIEntry{int lua_geti (lua_State *L, int index, lua_Integer i);|
+@APIEntry{int lua_geti (lua55_State *L, int index, lua_Integer i);|
 @apii{0,1,e}
 
 Pushes onto the stack the value @T{t[i]},
@@ -3577,7 +3577,7 @@ Returns the type of the pushed value.
 
 }
 
-@APIEntry{int lua_getmetatable (lua_State *L, int index);|
+@APIEntry{int lua_getmetatable (lua55_State *L, int index);|
 @apii{0,0|1,-}
 
 If the value at the given index has a metatable,
@@ -3587,7 +3587,7 @@ the function @N{returns 0} and pushes nothing on the stack.
 
 }
 
-@APIEntry{int lua_gettable (lua_State *L, int index);|
+@APIEntry{int lua_gettable (lua55_State *L, int index);|
 @apii{1,1,e}
 
 Pushes onto the stack the value @T{t[k]},
@@ -3603,7 +3603,7 @@ Returns the type of the pushed value.
 
 }
 
-@APIEntry{int lua_gettop (lua_State *L);|
+@APIEntry{int lua_gettop (lua55_State *L);|
 @apii{0,0,-}
 
 Returns the index of the top element in the stack.
@@ -3613,7 +3613,7 @@ in particular, @N{0 means} an empty stack.
 
 }
 
-@APIEntry{int lua_getiuservalue (lua_State *L, int index, int n);|
+@APIEntry{int lua_getiuservalue (lua55_State *L, int index, int n);|
 @apii{0,1,-}
 
 Pushes onto the stack the @id{n}-th user value associated with the
@@ -3625,7 +3625,7 @@ pushes @nil and returns @Lid{LUA_TNONE}.
 
 }
 
-@APIEntry{void lua_insert (lua_State *L, int index);|
+@APIEntry{void lua_insert (lua55_State *L, int index);|
 @apii{1,1,-}
 
 Moves the top element into the given valid index,
@@ -3651,7 +3651,7 @@ with the minimum and the maximum values that fit in this type.
 
 }
 
-@APIEntry{int lua_isboolean (lua_State *L, int index);|
+@APIEntry{int lua_isboolean (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a boolean,
@@ -3659,7 +3659,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_iscfunction (lua_State *L, int index);|
+@APIEntry{int lua_iscfunction (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a @N{C function},
@@ -3667,7 +3667,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_isfunction (lua_State *L, int index);|
+@APIEntry{int lua_isfunction (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a function
@@ -3675,7 +3675,7 @@ Returns 1 if the value at the given index is a function
 
 }
 
-@APIEntry{int lua_isinteger (lua_State *L, int index);|
+@APIEntry{int lua_isinteger (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is an integer
@@ -3684,7 +3684,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_islightuserdata (lua_State *L, int index);|
+@APIEntry{int lua_islightuserdata (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a light userdata,
@@ -3692,7 +3692,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_isnil (lua_State *L, int index);|
+@APIEntry{int lua_isnil (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is @nil,
@@ -3700,7 +3700,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_isnone (lua_State *L, int index);|
+@APIEntry{int lua_isnone (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the given index is not valid,
@@ -3708,7 +3708,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_isnoneornil (lua_State *L, int index);|
+@APIEntry{int lua_isnoneornil (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the given index is not valid
@@ -3717,7 +3717,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_isnumber (lua_State *L, int index);|
+@APIEntry{int lua_isnumber (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a number
@@ -3726,7 +3726,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_isstring (lua_State *L, int index);|
+@APIEntry{int lua_isstring (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a string
@@ -3735,7 +3735,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_istable (lua_State *L, int index);|
+@APIEntry{int lua_istable (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a table,
@@ -3743,7 +3743,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_isthread (lua_State *L, int index);|
+@APIEntry{int lua_isthread (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a thread,
@@ -3751,7 +3751,7 @@ and @N{0 otherwise}.
 
 }
 
-@APIEntry{int lua_isuserdata (lua_State *L, int index);|
+@APIEntry{int lua_isuserdata (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns 1 if the value at the given index is a userdata
@@ -3759,7 +3759,7 @@ Returns 1 if the value at the given index is a userdata
 
 }
 
-@APIEntry{int lua_isyieldable (lua_State *L);|
+@APIEntry{int lua_isyieldable (lua55_State *L);|
 @apii{0,0,-}
 
 Returns 1 if the given coroutine can yield,
@@ -3779,13 +3779,13 @@ Otherwise, it is defined as @id{ptrdiff_t}.
 }
 
 @APIEntry{
-typedef int (*lua_KFunction) (lua_State *L, int status, lua_KContext ctx);|
+typedef int (*lua_KFunction) (lua55_State *L, int status, lua_KContext ctx);|
 
 Type for continuation functions @see{continuations}.
 
 }
 
-@APIEntry{void lua_len (lua_State *L, int index);|
+@APIEntry{void lua_len (lua55_State *L, int index);|
 @apii{0,1,e}
 
 Returns the length of the value at the given index.
@@ -3796,7 +3796,7 @@ The result is pushed on the stack.
 }
 
 @APIEntry{
-int lua_load (lua_State *L,
+int lua_load (lua55_State *L,
               lua_Reader reader,
               void *data,
               const char *chunkname,
@@ -3858,7 +3858,7 @@ Other upvalues are initialized with @nil.
 
 }
 
-@APIEntry{lua_State *lua_newstate (lua_Alloc f, void *ud,
+@APIEntry{lua55_State *lua_newstate (lua_Alloc f, void *ud,
                                    unsigned int seed);|
 @apii{0,0,-}
 
@@ -3875,7 +3875,7 @@ is a seed for the hashing of strings.
 
 }
 
-@APIEntry{void lua_newtable (lua_State *L);|
+@APIEntry{void lua_newtable (lua55_State *L);|
 @apii{0,1,m}
 
 Creates a new empty table and pushes it onto the stack.
@@ -3883,11 +3883,11 @@ It is equivalent to @T{lua_createtable(L,0,0)}.
 
 }
 
-@APIEntry{lua_State *lua_newthread (lua_State *L);|
+@APIEntry{lua55_State *lua_newthread (lua55_State *L);|
 @apii{0,1,m}
 
 Creates a new thread, pushes it on the stack,
-and returns a pointer to a @Lid{lua_State} that represents this new thread.
+and returns a pointer to a @Lid{lua55_State} that represents this new thread.
 The new thread returned by this function shares with the original thread
 its global environment,
 but has an independent execution stack.
@@ -3897,7 +3897,7 @@ like any Lua object.
 
 }
 
-@APIEntry{void *lua_newuserdatauv (lua_State *L, size_t size, int nuvalue);|
+@APIEntry{void *lua_newuserdatauv (lua55_State *L, size_t size, int nuvalue);|
 @apii{0,1,m}
 
 This function creates and pushes on the stack a new full userdata,
@@ -3914,7 +3914,7 @@ its address is valid at least until the call to its finalizer.
 
 }
 
-@APIEntry{int lua_next (lua_State *L, int index);|
+@APIEntry{int lua_next (lua55_State *L, int index);|
 @apii{1,2|0,v}
 
 Pops a key from the stack,
@@ -3976,7 +3976,7 @@ This macro may evaluate its arguments more than once.
 
 }
 
-@APIEntry{unsigned lua_numbertocstring (lua_State *L, int idx,
+@APIEntry{unsigned lua_numbertocstring (lua55_State *L, int idx,
                                         char *buff);|
 @apii{0,0,-}
 
@@ -3990,7 +3990,7 @@ or zero if the value at @id{idx} is not a number.
 
 }
 
-@APIEntry{int lua_pcall (lua_State *L, int nargs, int nresults, int msgh);|
+@APIEntry{int lua_pcall (lua55_State *L, int nargs, int nresults, int msgh);|
 @apii{nargs + 1,nresults|1,-}
 
 Calls a function (or a callable object) in protected mode.
@@ -4029,7 +4029,7 @@ The @Lid{lua_pcall} function returns one of the following status codes:
 }
 
 @APIEntry{
-int lua_pcallk (lua_State *L,
+int lua_pcallk (lua55_State *L,
                 int nargs,
                 int nresults,
                 int msgh,
@@ -4042,7 +4042,7 @@ except that it allows the called function to yield @see{continuations}.
 
 }
 
-@APIEntry{void lua_pop (lua_State *L, int n);|
+@APIEntry{void lua_pop (lua55_State *L, int n);|
 @apii{n,0,e}
 
 Pops @id{n} elements from the stack.
@@ -4050,14 +4050,14 @@ It is implemented as a macro over @Lid{lua_settop}.
 
 }
 
-@APIEntry{void lua_pushboolean (lua_State *L, int b);|
+@APIEntry{void lua_pushboolean (lua55_State *L, int b);|
 @apii{0,1,-}
 
 Pushes a boolean value with value @id{b} onto the stack.
 
 }
 
-@APIEntry{void lua_pushcclosure (lua_State *L, lua_CFunction fn, int n);|
+@APIEntry{void lua_pushcclosure (lua55_State *L, lua_CFunction fn, int n);|
 @apii{n,1,m}
 
 Pushes a new @N{C closure} onto the stack.
@@ -4094,7 +4094,7 @@ In that case, it never raises a memory error.
 
 }
 
-@APIEntry{void lua_pushcfunction (lua_State *L, lua_CFunction f);|
+@APIEntry{void lua_pushcfunction (lua55_State *L, lua_CFunction f);|
 @apii{0,1,-}
 
 Pushes a @N{C function} onto the stack.
@@ -4102,7 +4102,7 @@ This function is equivalent to @Lid{lua_pushcclosure} with no upvalues.
 
 }
 
-@APIEntry{const char *lua_pushexternalstring (lua_State *L,
+@APIEntry{const char *lua_pushexternalstring (lua55_State *L,
                 const char *s, size_t len, lua_Alloc falloc, void *ud);|
 @apii{0,1,m}
 
@@ -4135,7 +4135,7 @@ The function returns a pointer to the string (that is, @id{s}).
 }
 
 
-@APIEntry{const char *lua_pushfstring (lua_State *L, const char *fmt, ...);|
+@APIEntry{const char *lua_pushfstring (lua55_State *L, const char *fmt, ...);|
 @apii{0,1,v}
 
 Pushes onto the stack a formatted string
@@ -4161,21 +4161,21 @@ this function may raise an error if the resulting string is too large.
 
 }
 
-@APIEntry{void lua_pushglobaltable (lua_State *L);|
+@APIEntry{void lua_pushglobaltable (lua55_State *L);|
 @apii{0,1,-}
 
 Pushes the @x{global environment} onto the stack.
 
 }
 
-@APIEntry{void lua_pushinteger (lua_State *L, lua_Integer n);|
+@APIEntry{void lua_pushinteger (lua55_State *L, lua_Integer n);|
 @apii{0,1,-}
 
 Pushes an integer with value @id{n} onto the stack.
 
 }
 
-@APIEntry{void lua_pushlightuserdata (lua_State *L, void *p);|
+@APIEntry{void lua_pushlightuserdata (lua55_State *L, void *p);|
 @apii{0,1,-}
 
 Pushes a light userdata onto the stack.
@@ -4190,7 +4190,7 @@ light userdata with the same @N{C address}.
 
 }
 
-@APIEntry{const char *lua_pushliteral (lua_State *L, const char *s);|
+@APIEntry{const char *lua_pushliteral (lua55_State *L, const char *s);|
 @apii{0,1,v}
 
 This macro is equivalent to @Lid{lua_pushstring},
@@ -4199,7 +4199,7 @@ but should be used only when @id{s} is a literal string.
 
 }
 
-@APIEntry{const char *lua_pushlstring (lua_State *L, const char *s, size_t len);|
+@APIEntry{const char *lua_pushlstring (lua55_State *L, const char *s, size_t len);|
 @apii{0,1,v}
 
 Pushes the string pointed to by @id{s} with size @id{len}
@@ -4217,21 +4217,21 @@ this function may raise an error if the string is too large.
 
 }
 
-@APIEntry{void lua_pushnil (lua_State *L);|
+@APIEntry{void lua_pushnil (lua55_State *L);|
 @apii{0,1,-}
 
 Pushes a nil value onto the stack.
 
 }
 
-@APIEntry{void lua_pushnumber (lua_State *L, lua_Number n);|
+@APIEntry{void lua_pushnumber (lua55_State *L, lua_Number n);|
 @apii{0,1,-}
 
 Pushes a float with value @id{n} onto the stack.
 
 }
 
-@APIEntry{const char *lua_pushstring (lua_State *L, const char *s);|
+@APIEntry{const char *lua_pushstring (lua55_State *L, const char *s);|
 @apii{0,1,m}
 
 Pushes the zero-terminated string pointed to by @id{s}
@@ -4246,7 +4246,7 @@ If @id{s} is @id{NULL}, pushes @nil and returns @id{NULL}.
 
 }
 
-@APIEntry{int lua_pushthread (lua_State *L);|
+@APIEntry{int lua_pushthread (lua55_State *L);|
 @apii{0,1,-}
 
 Pushes the thread represented by @id{L} onto the stack.
@@ -4254,7 +4254,7 @@ Returns 1 if this thread is the @x{main thread} of its state.
 
 }
 
-@APIEntry{void lua_pushvalue (lua_State *L, int index);|
+@APIEntry{void lua_pushvalue (lua55_State *L, int index);|
 @apii{0,1,-}
 
 Pushes a copy of the element at the given index
@@ -4263,7 +4263,7 @@ onto the stack.
 }
 
 @APIEntry{
-const char *lua_pushvfstring (lua_State *L,
+const char *lua_pushvfstring (lua55_State *L,
                               const char *fmt,
                               va_list argp);|
 @apii{0,1,-}
@@ -4277,7 +4277,7 @@ and returns @id{NULL}.
 
 }
 
-@APIEntry{int lua_rawequal (lua_State *L, int index1, int index2);|
+@APIEntry{int lua_rawequal (lua55_State *L, int index1, int index2);|
 @apii{0,0,-}
 
 Returns 1 if the two values in indices @id{index1} and
@@ -4288,7 +4288,7 @@ Also @N{returns 0} if any of the indices are not valid.
 
 }
 
-@APIEntry{int lua_rawget (lua_State *L, int index);|
+@APIEntry{int lua_rawget (lua55_State *L, int index);|
 @apii{1,1,-}
 
 Similar to @Lid{lua_gettable}, but does a raw access
@@ -4297,7 +4297,7 @@ The value at @id{index} must be a table.
 
 }
 
-@APIEntry{int lua_rawgeti (lua_State *L, int index, lua_Integer n);|
+@APIEntry{int lua_rawgeti (lua55_State *L, int index, lua_Integer n);|
 @apii{0,1,-}
 
 Pushes onto the stack the value @T{t[n]},
@@ -4309,7 +4309,7 @@ Returns the type of the pushed value.
 
 }
 
-@APIEntry{int lua_rawgetp (lua_State *L, int index, const void *p);|
+@APIEntry{int lua_rawgetp (lua55_State *L, int index, const void *p);|
 @apii{0,1,-}
 
 Pushes onto the stack the value @T{t[k]},
@@ -4322,7 +4322,7 @@ Returns the type of the pushed value.
 
 }
 
-@APIEntry{lua_Unsigned lua_rawlen (lua_State *L, int index);|
+@APIEntry{lua_Unsigned lua_rawlen (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns the raw @Q{length} of the value at the given index:
@@ -4335,7 +4335,7 @@ For other values, this call @N{returns 0}.
 
 }
 
-@APIEntry{void lua_rawset (lua_State *L, int index);|
+@APIEntry{void lua_rawset (lua55_State *L, int index);|
 @apii{2,0,m}
 
 Similar to @Lid{lua_settable}, but does a raw assignment
@@ -4344,7 +4344,7 @@ The value at @id{index} must be a table.
 
 }
 
-@APIEntry{void lua_rawseti (lua_State *L, int index, lua_Integer i);|
+@APIEntry{void lua_rawseti (lua55_State *L, int index, lua_Integer i);|
 @apii{1,0,m}
 
 Does the equivalent of @T{t[i] = v},
@@ -4357,7 +4357,7 @@ that is, it does not use the @idx{__newindex} metavalue.
 
 }
 
-@APIEntry{void lua_rawsetp (lua_State *L, int index, const void *p);|
+@APIEntry{void lua_rawsetp (lua55_State *L, int index, const void *p);|
 @apii{1,0,m}
 
 Does the equivalent of @T{t[p] = v},
@@ -4372,7 +4372,7 @@ that is, it does not use the @idx{__newindex} metavalue.
 }
 
 @APIEntry{
-typedef const char * (*lua_Reader) (lua_State *L,
+typedef const char * (*lua_Reader) (lua55_State *L,
                                     void *data,
                                     size_t *size);|
 
@@ -4390,7 +4390,7 @@ The reader function may return pieces of any size greater than zero.
 
 }
 
-@APIEntry{void lua_register (lua_State *L, const char *name, lua_CFunction f);|
+@APIEntry{void lua_register (lua55_State *L, const char *name, lua_CFunction f);|
 @apii{0,0,e}
 
 Sets the @N{C function} @id{f} as the new value of global @id{name}.
@@ -4402,7 +4402,7 @@ It is defined as a macro:
 
 }
 
-@APIEntry{void lua_remove (lua_State *L, int index);|
+@APIEntry{void lua_remove (lua55_State *L, int index);|
 @apii{1,0,-}
 
 Removes the element at the given valid index,
@@ -4412,7 +4412,7 @@ because a pseudo-index is not an actual stack position.
 
 }
 
-@APIEntry{void lua_replace (lua_State *L, int index);|
+@APIEntry{void lua_replace (lua55_State *L, int index);|
 @apii{1,0,-}
 
 Moves the top element into the given valid index
@@ -4423,7 +4423,7 @@ and then pops the top element.
 }
 
 
-@APIEntry{int lua_resume (lua_State *L, lua_State *from, int nargs,
+@APIEntry{int lua_resume (lua55_State *L, lua55_State *from, int nargs,
                           int *nresults);|
 @apii{?,?,-}
 
@@ -4462,7 +4462,7 @@ this parameter can be @id{NULL}.
 
 }
 
-@APIEntry{void lua_rotate (lua_State *L, int idx, int n);|
+@APIEntry{void lua_rotate (lua55_State *L, int idx, int n);|
 @apii{0,0,-}
 
 Rotates the stack elements between the valid index @id{idx}
@@ -4478,7 +4478,7 @@ because a pseudo-index is not an actual stack position.
 
 }
 
-@APIEntry{void lua_setallocf (lua_State *L, lua_Alloc f, void *ud);|
+@APIEntry{void lua_setallocf (lua55_State *L, lua_Alloc f, void *ud);|
 @apii{0,0,-}
 
 Changes the @x{allocator function} of a given state to @id{f}
@@ -4486,7 +4486,7 @@ with user data @id{ud}.
 
 }
 
-@APIEntry{void lua_setfield (lua_State *L, int index, const char *k);|
+@APIEntry{void lua_setfield (lua55_State *L, int index, const char *k);|
 @apii{1,0,e}
 
 Does the equivalent to @T{t[k] = v},
@@ -4499,7 +4499,7 @@ for the @Q{newindex} event @see{metatable}.
 
 }
 
-@APIEntry{void lua_setglobal (lua_State *L, const char *name);|
+@APIEntry{void lua_setglobal (lua55_State *L, const char *name);|
 @apii{1,0,e}
 
 Pops a value from the stack and
@@ -4507,7 +4507,7 @@ sets it as the new value of global @id{name}.
 
 }
 
-@APIEntry{void lua_seti (lua_State *L, int index, lua_Integer n);|
+@APIEntry{void lua_seti (lua55_State *L, int index, lua_Integer n);|
 @apii{1,0,e}
 
 Does the equivalent to @T{t[n] = v},
@@ -4520,7 +4520,7 @@ for the @Q{newindex} event @see{metatable}.
 
 }
 
-@APIEntry{int lua_setiuservalue (lua_State *L, int index, int n);|
+@APIEntry{int lua_setiuservalue (lua55_State *L, int index, int n);|
 @apii{1,0,-}
 
 Pops a value from the stack and sets it as
@@ -4530,7 +4530,7 @@ Returns 0 if the userdata does not have that value.
 
 }
 
-@APIEntry{int lua_setmetatable (lua_State *L, int index);|
+@APIEntry{int lua_setmetatable (lua55_State *L, int index);|
 @apii{1,0,-}
 
 Pops a table or @nil from the stack and
@@ -4542,7 +4542,7 @@ which now is always 1.)
 
 }
 
-@APIEntry{void lua_settable (lua_State *L, int index);|
+@APIEntry{void lua_settable (lua55_State *L, int index);|
 @apii{2,0,e}
 
 Does the equivalent to @T{t[k] = v},
@@ -4556,7 +4556,7 @@ for the @Q{newindex} event @see{metatable}.
 
 }
 
-@APIEntry{void lua_settop (lua_State *L, int index);|
+@APIEntry{void lua_settop (lua55_State *L, int index);|
 @apii{?,?,e}
 
 Receives any acceptable stack index, @N{or 0},
@@ -4570,7 +4570,7 @@ marked as to-be-closed from the stack.
 
 }
 
-@APIEntry{void lua_setwarnf (lua_State *L, lua_WarnFunction f, void *ud);|
+@APIEntry{void lua_setwarnf (lua55_State *L, lua_WarnFunction f, void *ud);|
 @apii{0,0,-}
 
 Sets the @x{warning function} to be used by Lua to emit warnings
@@ -4580,7 +4580,7 @@ the warning function.
 
 }
 
-@APIEntry{typedef struct lua_State lua_State;|
+@APIEntry{typedef struct lua55_State lua55_State;|
 
 An opaque structure that points to a thread and indirectly
 (through the thread) to the whole state of a Lua interpreter.
@@ -4594,7 +4594,7 @@ which creates a Lua state from scratch.
 
 }
 
-@APIEntry{int lua_status (lua_State *L);|
+@APIEntry{int lua_status (lua55_State *L);|
 @apii{0,0,-}
 
 Returns the status of the thread @id{L}.
@@ -4611,7 +4611,7 @@ You can resume threads with status @Lid{LUA_OK}
 
 }
 
-@APIEntry{size_t lua_stringtonumber (lua_State *L, const char *s);|
+@APIEntry{size_t lua_stringtonumber (lua55_State *L, const char *s);|
 @apii{0,1,-}
 
 Converts the zero-terminated string @id{s} to a number,
@@ -4628,7 +4628,7 @@ true if the conversion succeeds.)
 
 }
 
-@APIEntry{int lua_toboolean (lua_State *L, int index);|
+@APIEntry{int lua_toboolean (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Converts the Lua value at the given index to a @N{C boolean}
@@ -4642,7 +4642,7 @@ use @Lid{lua_isboolean} to test the value's type.)
 
 }
 
-@APIEntry{lua_CFunction lua_tocfunction (lua_State *L, int index);|
+@APIEntry{lua_CFunction lua_tocfunction (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Converts a value at the given index to a @N{C function}.
@@ -4651,7 +4651,7 @@ otherwise, returns @id{NULL}.
 
 }
 
-@APIEntry{void lua_toclose (lua_State *L, int index);|
+@APIEntry{void lua_toclose (lua55_State *L, int index);|
 @apii{0,0,v}
 
 Marks the given index in the stack as a
@@ -4683,14 +4683,14 @@ so that any automatic @N{C variable} declared in the calling function
 
 }
 
-@APIEntry{lua_Integer lua_tointeger (lua_State *L, int index);|
+@APIEntry{lua_Integer lua_tointeger (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Equivalent to @Lid{lua_tointegerx} with @id{isnum} equal to @id{NULL}.
 
 }
 
-@APIEntry{lua_Integer lua_tointegerx (lua_State *L, int index, int *isnum);|
+@APIEntry{lua_Integer lua_tointegerx (lua55_State *L, int index, int *isnum);|
 @apii{0,0,-}
 
 Converts the Lua value at the given index
@@ -4705,7 +4705,7 @@ indicates whether the operation succeeded.
 
 }
 
-@APIEntry{const char *lua_tolstring (lua_State *L, int index, size_t *len);|
+@APIEntry{const char *lua_tolstring (lua55_State *L, int index, size_t *len);|
 @apii{0,0,m}
 
 Converts the Lua value at the given index to a @N{C string}.
@@ -4733,14 +4733,14 @@ when converting a number to a string
 
 }
 
-@APIEntry{lua_Number lua_tonumber (lua_State *L, int index);|
+@APIEntry{lua_Number lua_tonumber (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Equivalent to @Lid{lua_tonumberx} with @id{isnum} equal to @id{NULL}.
 
 }
 
-@APIEntry{lua_Number lua_tonumberx (lua_State *L, int index, int *isnum);|
+@APIEntry{lua_Number lua_tonumberx (lua55_State *L, int index, int *isnum);|
 @apii{0,0,-}
 
 Converts the Lua value at the given index
@@ -4755,7 +4755,7 @@ indicates whether the operation succeeded.
 
 }
 
-@APIEntry{const void *lua_topointer (lua_State *L, int index);|
+@APIEntry{const void *lua_topointer (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Converts the value at the given index to a generic
@@ -4769,24 +4769,24 @@ Typically this function is used only for hashing and debug information.
 
 }
 
-@APIEntry{const char *lua_tostring (lua_State *L, int index);|
+@APIEntry{const char *lua_tostring (lua55_State *L, int index);|
 @apii{0,0,m}
 
 Equivalent to @Lid{lua_tolstring} with @id{len} equal to @id{NULL}.
 
 }
 
-@APIEntry{lua_State *lua_tothread (lua_State *L, int index);|
+@APIEntry{lua55_State *lua_tothread (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Converts the value at the given index to a Lua thread
-(represented as @T{lua_State*}).
+(represented as @T{lua55_State*}).
 This value must be a thread;
 otherwise, the function returns @id{NULL}.
 
 }
 
-@APIEntry{void *lua_touserdata (lua_State *L, int index);|
+@APIEntry{void *lua_touserdata (lua55_State *L, int index);|
 @apii{0,0,-}
 
 If the value at the given index is a full userdata,
@@ -4797,7 +4797,7 @@ Otherwise, returns @id{NULL}.
 
 }
 
-@APIEntry{int lua_type (lua_State *L, int index);|
+@APIEntry{int lua_type (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns the type of the value in the given valid index,
@@ -4817,7 +4817,7 @@ and
 
 }
 
-@APIEntry{const char *lua_typename (lua_State *L, int tp);|
+@APIEntry{const char *lua_typename (lua55_State *L, int tp);|
 @apii{0,0,-}
 
 Returns the name of the type encoded by the value @id{tp},
@@ -4840,7 +4840,7 @@ the running function @see{c-closure}.
 
 }
 
-@APIEntry{lua_Number lua_version (lua_State *L);|
+@APIEntry{lua_Number lua_version (lua55_State *L);|
 @apii{0,0,-}
 
 Returns the version number of this core.
@@ -4863,7 +4863,7 @@ See @Lid{warn} for more details about warnings.
 }
 
 @APIEntry{
-void lua_warning (lua_State *L, const char *msg, int tocont);|
+void lua_warning (lua55_State *L, const char *msg, int tocont);|
 @apii{0,0,-}
 
 Emits a warning with the given message.
@@ -4875,7 +4875,7 @@ See @Lid{warn} for more details about warnings.
 }
 
 @APIEntry{
-typedef int (*lua_Writer) (lua_State *L,
+typedef int (*lua_Writer) (lua55_State *L,
                            const void* p,
                            size_t sz,
                            void* ud);|
@@ -4898,7 +4898,7 @@ calling the writer again.
 
 }
 
-@APIEntry{void lua_xmove (lua_State *from, lua_State *to, int n);|
+@APIEntry{void lua_xmove (lua55_State *from, lua55_State *to, int n);|
 @apii{?,?,-}
 
 Exchange values between different threads of the same state.
@@ -4908,7 +4908,7 @@ and pushes them onto the stack @id{to}.
 
 }
 
-@APIEntry{int lua_yield (lua_State *L, int nresults);|
+@APIEntry{int lua_yield (lua55_State *L, int nresults);|
 @apii{?,?,v}
 
 This function is equivalent to @Lid{lua_yieldk},
@@ -4923,7 +4923,7 @@ this function should be called only in a tail call.
 
 
 @APIEntry{
-int lua_yieldk (lua_State *L,
+int lua_yieldk (lua55_State *L,
                 int nresults,
                 lua_KContext ctx,
                 lua_KFunction k);|
@@ -5129,28 +5129,28 @@ this value is always equal to @id{nparams}.)
 
 }
 
-@APIEntry{lua_Hook lua_gethook (lua_State *L);|
+@APIEntry{lua_Hook lua_gethook (lua55_State *L);|
 @apii{0,0,-}
 
 Returns the current hook function.
 
 }
 
-@APIEntry{int lua_gethookcount (lua_State *L);|
+@APIEntry{int lua_gethookcount (lua55_State *L);|
 @apii{0,0,-}
 
 Returns the current hook count.
 
 }
 
-@APIEntry{int lua_gethookmask (lua_State *L);|
+@APIEntry{int lua_gethookmask (lua55_State *L);|
 @apii{0,0,-}
 
 Returns the current hook mask.
 
 }
 
-@APIEntry{int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar);|
+@APIEntry{int lua_getinfo (lua55_State *L, const char *what, lua_Debug *ar);|
 @apii{0|1,0|1|2,m}
 
 Gets information about a specific function or function invocation.
@@ -5224,7 +5224,7 @@ even then the valid options are handled correctly.
 
 }
 
-@APIEntry{const char *lua_getlocal (lua_State *L, const lua_Debug *ar, int n);|
+@APIEntry{const char *lua_getlocal (lua55_State *L, const lua_Debug *ar, int n);|
 @apii{0,0|1,-}
 
 Gets information about a local variable or a temporary value
@@ -5253,7 +5253,7 @@ the number of active local variables.
 
 }
 
-@APIEntry{int lua_getstack (lua_State *L, int level, lua_Debug *ar);|
+@APIEntry{int lua_getstack (lua55_State *L, int level, lua_Debug *ar);|
 @apii{0,0,-}
 
 Gets information about the interpreter runtime stack.
@@ -5270,7 +5270,7 @@ otherwise it returns 1.
 
 }
 
-@APIEntry{const char *lua_getupvalue (lua_State *L, int funcindex, int n);|
+@APIEntry{const char *lua_getupvalue (lua55_State *L, int funcindex, int n);|
 @apii{0,0|1,-}
 
 Gets information about the @id{n}-th upvalue
@@ -5284,7 +5284,7 @@ See @Lid{debug.getupvalue} for more information about upvalues.
 
 }
 
-@APIEntry{typedef void (*lua_Hook) (lua_State *L, lua_Debug *ar);|
+@APIEntry{typedef void (*lua_Hook) (lua55_State *L, lua_Debug *ar);|
 
 Type for debugging hook functions.
 
@@ -5318,7 +5318,7 @@ calling @Lid{lua_yield} with @id{nresults} equal to zero
 
 }
 
-@APIEntry{void lua_sethook (lua_State *L, lua_Hook f, int mask, int count);|
+@APIEntry{void lua_sethook (lua55_State *L, lua_Hook f, int mask, int count);|
 @apii{0,0,-}
 
 Sets the debugging hook function.
@@ -5360,7 +5360,7 @@ Hooks are disabled by setting @id{mask} to zero.
 
 }
 
-@APIEntry{const char *lua_setlocal (lua_State *L, const lua_Debug *ar, int n);|
+@APIEntry{const char *lua_setlocal (lua55_State *L, const lua_Debug *ar, int n);|
 @apii{0|1,0,-}
 
 Sets the value of a local variable of a given activation record.
@@ -5376,7 +5376,7 @@ Parameters @id{ar} and @id{n} are as in the function @Lid{lua_getlocal}.
 
 }
 
-@APIEntry{const char *lua_setupvalue (lua_State *L, int funcindex, int n);|
+@APIEntry{const char *lua_setupvalue (lua55_State *L, int funcindex, int n);|
 @apii{0|1,0,-}
 
 Sets the value of a closure's upvalue.
@@ -5392,7 +5392,7 @@ the function @Lid{lua_getupvalue}.
 
 }
 
-@APIEntry{void *lua_upvalueid (lua_State *L, int funcindex, int n);|
+@APIEntry{void *lua_upvalueid (lua55_State *L, int funcindex, int n);|
 @apii{0,0,-}
 
 Returns a unique identifier for the upvalue numbered @id{n}
@@ -5411,7 +5411,7 @@ but @id{n} cannot be greater than the number of upvalues.
 }
 
 @APIEntry{
-void lua_upvaluejoin (lua_State *L, int funcindex1, int n1,
+void lua_upvaluejoin (lua55_State *L, int funcindex1, int n1,
                                     int funcindex2, int n2);|
 @apii{0,0,-}
 
@@ -5535,7 +5535,7 @@ which is the value to be added to the buffer.
 }
 
 @APIEntry{
-void luaL_argcheck (lua_State *L,
+void luaL_argcheck (lua55_State *L,
                     int cond,
                     int arg,
                     const char *extramsg);|
@@ -5546,7 +5546,7 @@ If it is not, raises an error with a standard message @seeF{luaL_argerror}.
 
 }
 
-@APIEntry{int luaL_argerror (lua_State *L, int arg, const char *extramsg);|
+@APIEntry{int luaL_argerror (lua55_State *L, int arg, const char *extramsg);|
 @apii{0,0,v}
 
 Raises an error reporting a problem with argument @id{arg}
@@ -5561,7 +5561,7 @@ This function never returns.
 }
 
 @APIEntry{
-void luaL_argexpected (lua_State *L,
+void luaL_argexpected (lua55_State *L,
                        int cond,
                        int arg,
                        const char *tname);|
@@ -5643,7 +5643,7 @@ Note that any addition to the buffer may invalidate this address.
 
 }
 
-@APIEntry{void luaL_buffinit (lua_State *L, luaL_Buffer *B);|
+@APIEntry{void luaL_buffinit (lua55_State *L, luaL_Buffer *B);|
 @apii{0,?,-}
 
 Initializes a buffer @id{B}
@@ -5661,7 +5661,7 @@ Returns the length of the current content of buffer @id{B}
 
 }
 
-@APIEntry{char *luaL_buffinitsize (lua_State *L, luaL_Buffer *B, size_t sz);|
+@APIEntry{char *luaL_buffinitsize (lua55_State *L, luaL_Buffer *B, size_t sz);|
 @apii{?,?,m}
 
 Equivalent to the sequence
@@ -5678,7 +5678,7 @@ The buffer must have at least that many bytes.
 
 }
 
-@APIEntry{int luaL_callmeta (lua_State *L, int obj, const char *e);|
+@APIEntry{int luaL_callmeta (lua55_State *L, int obj, const char *e);|
 @apii{0,0|1,e}
 
 Calls a metamethod.
@@ -5693,7 +5693,7 @@ this function returns false without pushing any value on the stack.
 
 }
 
-@APIEntry{void luaL_checkany (lua_State *L, int arg);|
+@APIEntry{void luaL_checkany (lua55_State *L, int arg);|
 @apii{0,0,v}
 
 Checks whether the function has an argument
@@ -5701,7 +5701,7 @@ of any type (including @nil) at position @id{arg}.
 
 }
 
-@APIEntry{lua_Integer luaL_checkinteger (lua_State *L, int arg);|
+@APIEntry{lua_Integer luaL_checkinteger (lua55_State *L, int arg);|
 @apii{0,0,v}
 
 Checks whether the function argument @id{arg} is an integer
@@ -5710,7 +5710,7 @@ and returns this integer.
 
 }
 
-@APIEntry{const char *luaL_checklstring (lua_State *L, int arg, size_t *l);|
+@APIEntry{const char *luaL_checklstring (lua55_State *L, int arg, size_t *l);|
 @apii{0,0,v}
 
 Checks whether the function argument @id{arg} is a string
@@ -5723,7 +5723,7 @@ so all conversions and caveats of that function apply here.
 
 }
 
-@APIEntry{lua_Number luaL_checknumber (lua_State *L, int arg);|
+@APIEntry{lua_Number luaL_checknumber (lua55_State *L, int arg);|
 @apii{0,0,v}
 
 Checks whether the function argument @id{arg} is a number
@@ -5732,7 +5732,7 @@ and returns this number converted to a @id{lua_Number}.
 }
 
 @APIEntry{
-int luaL_checkoption (lua_State *L,
+int luaL_checkoption (lua55_State *L,
                       int arg,
                       const char *def,
                       const char *const lst[]);|
@@ -5755,7 +5755,7 @@ to use strings instead of numbers to select options.)
 
 }
 
-@APIEntry{void luaL_checkstack (lua_State *L, int sz, const char *msg);|
+@APIEntry{void luaL_checkstack (lua55_State *L, int sz, const char *msg);|
 @apii{0,0,v}
 
 Grows the stack size to @T{top + sz} elements,
@@ -5765,7 +5765,7 @@ raising an error if the stack cannot grow to that size.
 
 }
 
-@APIEntry{const char *luaL_checkstring (lua_State *L, int arg);|
+@APIEntry{const char *luaL_checkstring (lua55_State *L, int arg);|
 @apii{0,0,v}
 
 Checks whether the function argument @id{arg} is a string
@@ -5776,7 +5776,7 @@ so all conversions and caveats of that function apply here.
 
 }
 
-@APIEntry{void luaL_checktype (lua_State *L, int arg, int t);|
+@APIEntry{void luaL_checktype (lua55_State *L, int arg, int t);|
 @apii{0,0,v}
 
 Checks whether the function argument @id{arg} has type @id{t}.
@@ -5784,7 +5784,7 @@ See @Lid{lua_type} for the encoding of types for @id{t}.
 
 }
 
-@APIEntry{void *luaL_checkudata (lua_State *L, int arg, const char *tname);|
+@APIEntry{void *luaL_checkudata (lua55_State *L, int arg, const char *tname);|
 @apii{0,0,v}
 
 Checks whether the function argument @id{arg} is a userdata
@@ -5793,7 +5793,7 @@ returns the userdata's memory-block address @seeC{lua_touserdata}.
 
 }
 
-@APIEntry{void luaL_checkversion (lua_State *L);|
+@APIEntry{void luaL_checkversion (lua55_State *L);|
 @apii{0,0,v}
 
 Checks whether the code making the call and the Lua library being called
@@ -5801,7 +5801,7 @@ are using the same version of Lua and the same numeric types.
 
 }
 
-@APIEntry{int luaL_dofile (lua_State *L, const char *filename);|
+@APIEntry{int luaL_dofile (lua55_State *L, const char *filename);|
 @apii{0,?,m}
 
 Loads and runs the given file.
@@ -5815,7 +5815,7 @@ or 1 in case of errors.
 
 }
 
-@APIEntry{int luaL_dostring (lua_State *L, const char *str);|
+@APIEntry{int luaL_dostring (lua55_State *L, const char *str);|
 @apii{0,?,-}
 
 Loads and runs the given string.
@@ -5828,7 +5828,7 @@ or 1 in case of errors.
 
 }
 
-@APIEntry{int luaL_error (lua_State *L, const char *fmt, ...);|
+@APIEntry{int luaL_error (lua55_State *L, const char *fmt, ...);|
 @apii{0,0,v}
 
 Raises an error.
@@ -5845,7 +5845,7 @@ as @T{return luaL_error(@rep{args})}.
 
 }
 
-@APIEntry{int luaL_execresult (lua_State *L, int stat);|
+@APIEntry{int luaL_execresult (lua55_State *L, int stat);|
 @apii{0,3,m}
 
 This function produces the return values for
@@ -5855,7 +5855,7 @@ process-related functions in the standard library
 }
 
 @APIEntry{
-int luaL_fileresult (lua_State *L, int stat, const char *fname);|
+int luaL_fileresult (lua55_State *L, int stat, const char *fname);|
 @apii{0,1|3,m}
 
 This function produces the return values for
@@ -5864,7 +5864,7 @@ file-related functions in the standard library
 
 }
 
-@APIEntry{int luaL_getmetafield (lua_State *L, int obj, const char *e);|
+@APIEntry{int luaL_getmetafield (lua55_State *L, int obj, const char *e);|
 @apii{0,0|1,m}
 
 Pushes onto the stack the field @id{e} from the metatable
@@ -5875,7 +5875,7 @@ pushes nothing and returns @id{LUA_TNIL}.
 
 }
 
-@APIEntry{int luaL_getmetatable (lua_State *L, const char *tname);|
+@APIEntry{int luaL_getmetatable (lua55_State *L, const char *tname);|
 @apii{0,1,m}
 
 Pushes onto the stack the metatable associated with the name @id{tname}
@@ -5885,7 +5885,7 @@ Returns the type of the pushed value.
 
 }
 
-@APIEntry{int luaL_getsubtable (lua_State *L, int idx, const char *fname);|
+@APIEntry{int luaL_getsubtable (lua55_State *L, int idx, const char *fname);|
 @apii{0,1,e}
 
 Ensures that the value @T{t[fname]},
@@ -5898,7 +5898,7 @@ and false if it creates a new table.
 }
 
 @APIEntry{
-const char *luaL_gsub (lua_State *L,
+const char *luaL_gsub (lua55_State *L,
                        const char *s,
                        const char *p,
                        const char *r);|
@@ -5911,7 +5911,7 @@ Pushes the resulting string on the stack and returns it.
 
 }
 
-@APIEntry{lua_Integer luaL_len (lua_State *L, int index);|
+@APIEntry{lua_Integer luaL_len (lua55_State *L, int index);|
 @apii{0,0,e}
 
 Returns the @Q{length} of the value at the given index
@@ -5923,7 +5923,7 @@ Raises an error if the result of the operation is not an integer.
 }
 
 @APIEntry{
-int luaL_loadbuffer (lua_State *L,
+int luaL_loadbuffer (lua55_State *L,
                      const char *buff,
                      size_t sz,
                      const char *name);|
@@ -5935,7 +5935,7 @@ Equivalent to @Lid{luaL_loadbufferx} with @id{mode} equal to @id{NULL}.
 
 
 @APIEntry{
-int luaL_loadbufferx (lua_State *L,
+int luaL_loadbufferx (lua55_State *L,
                       const char *buff,
                       size_t sz,
                       const char *name,
@@ -5956,14 +5956,14 @@ fixed buffers.
 }
 
 
-@APIEntry{int luaL_loadfile (lua_State *L, const char *filename);|
+@APIEntry{int luaL_loadfile (lua55_State *L, const char *filename);|
 @apii{0,1,m}
 
 Equivalent to @Lid{luaL_loadfilex} with @id{mode} equal to @id{NULL}.
 
 }
 
-@APIEntry{int luaL_loadfilex (lua_State *L, const char *filename,
+@APIEntry{int luaL_loadfilex (lua55_State *L, const char *filename,
                                             const char *mode);|
 @apii{0,1,m}
 
@@ -5984,7 +5984,7 @@ it does not run it.
 
 }
 
-@APIEntry{int luaL_loadstring (lua_State *L, const char *s);|
+@APIEntry{int luaL_loadstring (lua55_State *L, const char *s);|
 @apii{0,1,-}
 
 Loads a string as a Lua chunk.
@@ -5998,7 +5998,7 @@ it does not run it.
 
 }
 
-@APIEntry{unsigned int luaL_makeseed (lua_State *L);|
+@APIEntry{unsigned int luaL_makeseed (lua55_State *L);|
 @apii{0,0,-}
 
 Returns a value with a weak attempt for randomness.
@@ -6008,7 +6008,7 @@ if there is no Lua state available.
 }
 
 
-@APIEntry{void luaL_newlib (lua_State *L, const luaL_Reg l[]);|
+@APIEntry{void luaL_newlib (lua55_State *L, const luaL_Reg l[]);|
 @apii{0,1,m}
 
 Creates a new table and registers there
@@ -6023,7 +6023,7 @@ not a pointer to it.
 
 }
 
-@APIEntry{void luaL_newlibtable (lua_State *L, const luaL_Reg l[]);|
+@APIEntry{void luaL_newlibtable (lua55_State *L, const luaL_Reg l[]);|
 @apii{0,1,m}
 
 Creates a new table with a size optimized
@@ -6038,7 +6038,7 @@ not a pointer to it.
 
 }
 
-@APIEntry{int luaL_newmetatable (lua_State *L, const char *tname);|
+@APIEntry{int luaL_newmetatable (lua55_State *L, const char *tname);|
 @apii{0,1,m}
 
 If the registry already has the key @id{tname},
@@ -6055,7 +6055,7 @@ with @id{tname} in the registry.
 
 }
 
-@APIEntry{lua_State *luaL_newstate (void);|
+@APIEntry{lua55_State *luaL_newstate (void);|
 @apii{0,0,-}
 
 Creates a new Lua state.
@@ -6088,7 +6088,7 @@ Note that it evaluates the expression @id{dflt} only if needed.
 }
 
 @APIEntry{
-lua_Integer luaL_optinteger (lua_State *L,
+lua_Integer luaL_optinteger (lua55_State *L,
                              int arg,
                              lua_Integer d);|
 @apii{0,0,v}
@@ -6103,7 +6103,7 @@ Otherwise, raises an error.
 }
 
 @APIEntry{
-const char *luaL_optlstring (lua_State *L,
+const char *luaL_optlstring (lua55_State *L,
                              int arg,
                              const char *d,
                              size_t *l);|
@@ -6126,7 +6126,7 @@ so all conversions and caveats of that function apply here.
 
 }
 
-@APIEntry{lua_Number luaL_optnumber (lua_State *L, int arg, lua_Number d);|
+@APIEntry{lua_Number luaL_optnumber (lua55_State *L, int arg, lua_Number d);|
 @apii{0,0,v}
 
 If the function argument @id{arg} is a number,
@@ -6138,7 +6138,7 @@ Otherwise, raises an error.
 }
 
 @APIEntry{
-const char *luaL_optstring (lua_State *L,
+const char *luaL_optstring (lua55_State *L,
                             int arg,
                             const char *d);|
 @apii{0,0,v}
@@ -6171,7 +6171,7 @@ it to the buffer.
 
 }
 
-@APIEntry{void luaL_pushfail (lua_State *L);|
+@APIEntry{void luaL_pushfail (lua55_State *L);|
 @apii{0,1,-}
 
 Pushes the @fail value onto the stack @see{libraries}.
@@ -6193,7 +6193,7 @@ Equivalent to the sequence @Lid{luaL_addsize}, @Lid{luaL_pushresult}.
 
 }
 
-@APIEntry{int luaL_ref (lua_State *L, int t);|
+@APIEntry{int luaL_ref (lua55_State *L, int t);|
 @apii{1,0,m}
 
 Creates and returns a @def{reference},
@@ -6241,7 +6241,7 @@ in which both @id{name} and @id{func} are @id{NULL}.
 }
 
 @APIEntry{
-void luaL_requiref (lua_State *L, const char *modname,
+void luaL_requiref (lua55_State *L, const char *modname,
                     lua_CFunction openf, int glb);|
 @apii{0,1,e}
 
@@ -6257,7 +6257,7 @@ Leaves a copy of the module on the stack.
 
 }
 
-@APIEntry{void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup);|
+@APIEntry{void luaL_setfuncs (lua55_State *L, const luaL_Reg *l, int nup);|
 @apii{nup,0,m}
 
 Registers all functions in the array @id{l}
@@ -6276,7 +6276,7 @@ which is filled with @false.
 
 }
 
-@APIEntry{void luaL_setmetatable (lua_State *L, const char *tname);|
+@APIEntry{void luaL_setmetatable (lua55_State *L, const char *tname);|
 @apii{0,0,-}
 
 Sets the metatable of the object on the top of the stack
@@ -6326,7 +6326,7 @@ to signal that the handle is closed.
 
 }
 
-@APIEntry{void *luaL_testudata (lua_State *L, int arg, const char *tname);|
+@APIEntry{void *luaL_testudata (lua55_State *L, int arg, const char *tname);|
 @apii{0,0,m}
 
 This function works like @Lid{luaL_checkudata},
@@ -6335,7 +6335,7 @@ it returns @id{NULL} instead of raising an error.
 
 }
 
-@APIEntry{const char *luaL_tolstring (lua_State *L, int idx, size_t *len);|
+@APIEntry{const char *luaL_tolstring (lua55_State *L, int idx, size_t *len);|
 @apii{0,1,e}
 
 Converts any Lua value at the given index to a @N{C string}
@@ -6353,7 +6353,7 @@ and uses the result of the call as its result.
 }
 
 @APIEntry{
-void luaL_traceback (lua_State *L, lua_State *L1, const char *msg,
+void luaL_traceback (lua55_State *L, lua55_State *L1, const char *msg,
                      int level);|
 @apii{0,1,m}
 
@@ -6365,7 +6365,7 @@ to start the traceback.
 
 }
 
-@APIEntry{int luaL_typeerror (lua_State *L, int arg, const char *tname);|
+@APIEntry{int luaL_typeerror (lua55_State *L, int arg, const char *tname);|
 @apii{0,0,v}
 
 Raises a type error for the argument @id{arg}
@@ -6376,14 +6376,14 @@ This function never returns.
 
 }
 
-@APIEntry{const char *luaL_typename (lua_State *L, int index);|
+@APIEntry{const char *luaL_typename (lua55_State *L, int index);|
 @apii{0,0,-}
 
 Returns the name of the type of the value at the given index.
 
 }
 
-@APIEntry{void luaL_unref (lua_State *L, int t, int ref);|
+@APIEntry{void luaL_unref (lua55_State *L, int t, int ref);|
 @apii{0,0,-}
 
 Releases a reference @see{luaL_ref}.
@@ -6399,7 +6399,7 @@ the reference @id{ref} can be used again by @Lid{luaL_ref}.
 
 }
 
-@APIEntry{void luaL_where (lua_State *L, int lvl);|
+@APIEntry{void luaL_where (lua55_State *L, int lvl);|
 @apii{0,1,m}
 
 Pushes onto the stack a string identifying the current position
@@ -6498,14 +6498,14 @@ Both functions are declared in the header file @id{lualib.h}.
 The stand-alone interpreter @id{lua} @see{lua-sa}
 already opens all standard libraries.
 
-@APIEntry{void luaL_openlibs (lua_State *L);|
+@APIEntry{void luaL_openlibs (lua55_State *L);|
 @apii{0,0,e}
 
 Opens all standard Lua libraries into the given state.
 
 }
 
-@APIEntry{void luaL_openselectedlibs (lua_State *L, int load, int preload);|
+@APIEntry{void luaL_openselectedlibs (lua55_State *L, int load, int preload);|
 @apii{0,0,e}
 
 Opens (loads) and preloads selected standard libraries into the state @id{L}.

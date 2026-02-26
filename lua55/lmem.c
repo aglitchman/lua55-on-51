@@ -94,7 +94,7 @@ static void *firsttry (global_State *g, void *block, size_t os, size_t ns) {
 #define MINSIZEARRAY	4
 
 
-void *luaM_growaux_ (lua_State *L, void *block, int nelems, int *psize,
+void *luaM_growaux_ (lua55_State *L, void *block, int nelems, int *psize,
                      unsigned size_elems, int limit, const char *what) {
   void *newblock;
   int size = *psize;
@@ -125,7 +125,7 @@ void *luaM_growaux_ (lua_State *L, void *block, int nelems, int *psize,
 ** to its number of elements, the only option is to raise an
 ** error.
 */
-void *luaM_shrinkvector_ (lua_State *L, void *block, int *size,
+void *luaM_shrinkvector_ (lua55_State *L, void *block, int *size,
                           int final_n, unsigned size_elem) {
   void *newblock;
   size_t oldsize = cast_sizet(*size) * size_elem;
@@ -139,7 +139,7 @@ void *luaM_shrinkvector_ (lua_State *L, void *block, int *size,
 /* }================================================================== */
 
 
-l_noret luaM_toobig (lua_State *L) {
+l_noret luaM_toobig (lua55_State *L) {
   luaG_runerror(L, "memory allocation error: block too big");
 }
 
@@ -147,7 +147,7 @@ l_noret luaM_toobig (lua_State *L) {
 /*
 ** Free memory
 */
-void luaM_free_ (lua_State *L, void *block, size_t osize) {
+void luaM_free_ (lua55_State *L, void *block, size_t osize) {
   global_State *g = G(L);
   lua_assert((osize == 0) == (block == NULL));
   callfrealloc(g, block, osize, 0);
@@ -159,7 +159,7 @@ void luaM_free_ (lua_State *L, void *block, size_t osize) {
 ** In case of allocation fail, this function will do an emergency
 ** collection to free some memory and then try the allocation again.
 */
-static void *tryagain (lua_State *L, void *block,
+static void *tryagain (lua55_State *L, void *block,
                        size_t osize, size_t nsize) {
   global_State *g = G(L);
   if (cantryagain(g)) {
@@ -173,7 +173,7 @@ static void *tryagain (lua_State *L, void *block,
 /*
 ** Generic allocation routine.
 */
-void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
+void *luaM_realloc_ (lua55_State *L, void *block, size_t osize, size_t nsize) {
   void *newblock;
   global_State *g = G(L);
   lua_assert((osize == 0) == (block == NULL));
@@ -189,7 +189,7 @@ void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
 }
 
 
-void *luaM_saferealloc_ (lua_State *L, void *block, size_t osize,
+void *luaM_saferealloc_ (lua55_State *L, void *block, size_t osize,
                                                     size_t nsize) {
   void *newblock = luaM_realloc_(L, block, osize, nsize);
   if (l_unlikely(newblock == NULL && nsize > 0))  /* allocation failed? */
@@ -198,7 +198,7 @@ void *luaM_saferealloc_ (lua_State *L, void *block, size_t osize,
 }
 
 
-void *luaM_malloc_ (lua_State *L, size_t size, int tag) {
+void *luaM_malloc_ (lua55_State *L, size_t size, int tag) {
   if (size == 0)
     return NULL;  /* that's all */
   else {

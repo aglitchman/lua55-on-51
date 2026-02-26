@@ -77,20 +77,20 @@
 #define luaM_shrinkvector(L,v,size,fs,t) \
    ((v)=cast(t *, luaM_shrinkvector_(L, v, &(size), fs, sizeof(t))))
 
-LUAI_FUNC l_noret luaM_toobig (lua_State *L);
+LUAI_FUNC l_noret luaM_toobig (lua55_State *L);
 
 /* not to be called directly */
-LUAI_FUNC void *luaM_realloc_ (lua_State *L, void *block, size_t oldsize,
+LUAI_FUNC void *luaM_realloc_ (lua55_State *L, void *block, size_t oldsize,
                                                           size_t size);
-LUAI_FUNC void *luaM_saferealloc_ (lua_State *L, void *block, size_t oldsize,
+LUAI_FUNC void *luaM_saferealloc_ (lua55_State *L, void *block, size_t oldsize,
                                                               size_t size);
-LUAI_FUNC void luaM_free_ (lua_State *L, void *block, size_t osize);
-LUAI_FUNC void *luaM_growaux_ (lua_State *L, void *block, int nelems,
+LUAI_FUNC void luaM_free_ (lua55_State *L, void *block, size_t osize);
+LUAI_FUNC void *luaM_growaux_ (lua55_State *L, void *block, int nelems,
                                int *size, unsigned size_elem, int limit,
                                const char *what);
-LUAI_FUNC void *luaM_shrinkvector_ (lua_State *L, void *block, int *nelem,
+LUAI_FUNC void *luaM_shrinkvector_ (lua55_State *L, void *block, int *nelem,
                                     int final_n, unsigned size_elem);
-LUAI_FUNC void *luaM_malloc_ (lua_State *L, size_t size, int tag);
+LUAI_FUNC void *luaM_malloc_ (lua55_State *L, size_t size, int tag);
 
 #endif
 

@@ -32,7 +32,7 @@
 
 
 typedef struct {
-  lua_State *L;
+  lua55_State *L;
   ZIO *Z;
   const char *name;
   Table *h;  /* list for string reuse */
@@ -143,7 +143,7 @@ static lua_Integer loadInteger (LoadState *S) {
 ** 'luaH_setint' can call the GC.)
 */
 static void loadString (LoadState *S, Proto *p, TString **sl) {
-  lua_State *L = S->L;
+  lua55_State *L = S->L;
   TString *ts;
   TValue sv;
   size_t size = loadSize(S);
@@ -392,7 +392,7 @@ static void checkHeader (LoadState *S) {
 /*
 ** Load precompiled chunk.
 */
-LClosure *luaU_undump (lua_State *L, ZIO *Z, const char *name, int fixed) {
+LClosure *luaU_undump (lua55_State *L, ZIO *Z, const char *name, int fixed) {
   LoadState S;
   LClosure *cl;
   if (*name == '@' || *name == '=')

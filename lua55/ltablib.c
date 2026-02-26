@@ -34,7 +34,7 @@
 #define aux_getn(L,n,w)	(checktab(L, n, (w) | TAB_L), lua55L_len(L, n))
 
 
-static int checkfield (lua_State *L, const char *key, int n) {
+static int checkfield (lua55_State *L, const char *key, int n) {
   lua55_pushstring(L, key);
   return (lua55_rawget(L, -n) != LUA_TNIL);
 }
@@ -44,7 +44,7 @@ static int checkfield (lua_State *L, const char *key, int n) {
 ** Check that 'arg' either is a table or can behave like one (that is,
 ** has a metatable with the required metamethods)
 */
-static void checktab (lua_State *L, int arg, int what) {
+static void checktab (lua55_State *L, int arg, int what) {
   if (lua55_type(L, arg) != LUA_TTABLE) {  /* is it not a table? */
     int n = 1;  /* number of elements to pop */
     if (lua55_getmetatable(L, arg) &&  /* must have metatable */
@@ -59,7 +59,7 @@ static void checktab (lua_State *L, int arg, int what) {
 }
 
 
-static int tcreate (lua_State *L) {
+static int tcreate (lua55_State *L) {
   lua_Unsigned sizeseq = (lua_Unsigned)lua55L_checkinteger(L, 1);
   lua_Unsigned sizerest = (lua_Unsigned)lua55L_optinteger(L, 2, 0);
   lua55L_argcheck(L, sizeseq <= cast_uint(INT_MAX), 1, "out of range");
@@ -69,7 +69,7 @@ static int tcreate (lua_State *L) {
 }
 
 
-static int tinsert (lua_State *L) {
+static int tinsert (lua55_State *L) {
   lua_Integer pos;  /* where to insert new element */
   lua_Integer e = aux_getn(L, 1, TAB_RW);
   e = lua55L_intop(+, e, 1);  /* first empty element */
@@ -99,7 +99,7 @@ static int tinsert (lua_State *L) {
 }
 
 
-static int tremove (lua_State *L) {
+static int tremove (lua55_State *L) {
   lua_Integer size = aux_getn(L, 1, TAB_RW);
   lua_Integer pos = lua55L_optinteger(L, 2, size);
   if (pos != size)  /* validate 'pos' if given */
@@ -123,7 +123,7 @@ static int tremove (lua_State *L) {
 ** "possible" means destination after original range, or smaller
 ** than origin, or copying to another table.
 */
-static int tmove (lua_State *L) {
+static int tmove (lua55_State *L) {
   lua_Integer f = lua55L_checkinteger(L, 2);
   lua_Integer e = lua55L_checkinteger(L, 3);
   lua_Integer t = lua55L_checkinteger(L, 4);
@@ -155,7 +155,7 @@ static int tmove (lua_State *L) {
 }
 
 
-static void addfield (lua_State *L, luaL_Buffer *b, lua_Integer i) {
+static void addfield (lua55_State *L, luaL_Buffer *b, lua_Integer i) {
   lua55_geti(L, 1, i);
   if (l_unlikely(!lua55_isstring(L, -1)))
     lua55L_error(L, "invalid value (%s) at index %I in table for 'concat'",
@@ -164,7 +164,7 @@ static void addfield (lua_State *L, luaL_Buffer *b, lua_Integer i) {
 }
 
 
-static int tconcat (lua_State *L) {
+static int tconcat (lua55_State *L) {
   luaL_Buffer b;
   lua_Integer last = aux_getn(L, 1, TAB_R);
   size_t lsep;
@@ -189,7 +189,7 @@ static int tconcat (lua_State *L) {
 ** =======================================================
 */
 
-static int tpack (lua_State *L) {
+static int tpack (lua55_State *L) {
   int i;
   int n = lua55_gettop(L);  /* number of elements to pack */
   lua55_createtable(L, n, 1);  /* create result table */
@@ -202,7 +202,7 @@ static int tpack (lua_State *L) {
 }
 
 
-static int tunpack (lua_State *L) {
+static int tunpack (lua55_State *L) {
   lua_Unsigned n;
   lua_Integer i = lua55L_optinteger(L, 2, 1);
   lua_Integer e = lua55L_opt(L, lua55L_checkinteger, 3, lua55L_len(L, 1));
@@ -258,7 +258,7 @@ typedef unsigned int IdxT;
 #define RANLIMIT	100u
 
 
-static void set2 (lua_State *L, IdxT i, IdxT j) {
+static void set2 (lua55_State *L, IdxT i, IdxT j) {
   seti(L, 1, i);
   seti(L, 1, j);
 }
@@ -268,7 +268,7 @@ static void set2 (lua_State *L, IdxT i, IdxT j) {
 ** Return true iff value at stack index 'a' is less than the value at
 ** index 'b' (according to the order of the sort).
 */
-static int sort_comp (lua_State *L, int a, int b) {
+static int sort_comp (lua55_State *L, int a, int b) {
   if (lua55_isnil(L, 2))  /* no function? */
     return lua55_compare(L, a, b, LUA_OPLT);  /* a < b */
   else {  /* function */
@@ -291,7 +291,7 @@ static int sort_comp (lua_State *L, int a, int b) {
 ** Pos-condition: a[lo .. i - 1] <= a[i] == P <= a[i + 1 .. up]
 ** returns 'i'.
 */
-static IdxT partition (lua_State *L, IdxT lo, IdxT up) {
+static IdxT partition (lua55_State *L, IdxT lo, IdxT up) {
   IdxT i = lo;  /* will be incremented before first use */
   IdxT j = up - 1;  /* will be decremented before first use */
   /* loop invariant: a[lo .. i] <= P <= a[j .. up] */
@@ -338,7 +338,7 @@ static IdxT choosePivot (IdxT lo, IdxT up, unsigned int rnd) {
 /*
 ** Quicksort algorithm (recursive function)
 */
-static void auxsort (lua_State *L, IdxT lo, IdxT up, unsigned rnd) {
+static void auxsort (lua55_State *L, IdxT lo, IdxT up, unsigned rnd) {
   while (lo < up) {  /* loop for tail recursion */
     IdxT p;  /* Pivot index */
     IdxT n;  /* to be used later */
@@ -391,7 +391,7 @@ static void auxsort (lua_State *L, IdxT lo, IdxT up, unsigned rnd) {
 }
 
 
-static int sort (lua_State *L) {
+static int sort (lua55_State *L) {
   lua_Integer n = aux_getn(L, 1, TAB_RW);
   if (n > 1) {  /* non-trivial interval? */
     lua55L_argcheck(L, n < INT_MAX, 1, "array too big");
@@ -419,7 +419,7 @@ static const luaL_Reg tab_funcs[] = {
 };
 
 
-LUAMOD_API int lua55open_table (lua_State *L) {
+LUAMOD_API int lua55open_table (lua55_State *L) {
   lua55L_newlib(L, tab_funcs);
   return 1;
 }

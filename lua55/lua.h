@@ -53,7 +53,7 @@
 #define LUA_ERRERR	5
 
 
-typedef struct lua_State lua55_State;
+typedef struct lua55_State lua55_State;
 
 
 /* type of numbers in Lua */
@@ -609,7 +609,7 @@ struct lua55_Debug {
 /* Internal compatibility - allow existing code to compile
 ** These are just aliases to the lua55_ prefixed versions
 */
-typedef struct lua_State lua_State;
+typedef struct lua55_State lua55_State;
 typedef lua55_Number lua_Number;
 typedef lua55_Integer lua_Integer;
 typedef lua55_Unsigned lua_Unsigned;

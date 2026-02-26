@@ -72,7 +72,7 @@ static l_noret error_expected (LexState *ls, int token) {
 
 
 static l_noret errorlimit (FuncState *fs, int limit, const char *what) {
-  lua_State *L = fs->ls->L;
+  lua55_State *L = fs->ls->L;
   const char *msg;
   int line = fs->f->linedefined;
   const char *where = (line == 0)
@@ -192,7 +192,7 @@ static short registerlocalvar (LexState *ls, FuncState *fs,
 ** Return its index in the function.
 */
 static int new_varkind (LexState *ls, TString *name, lu_byte kind) {
-  lua_State *L = ls->L;
+  lua55_State *L = ls->L;
   FuncState *fs = ls->fs;
   Dyndata *dyd = ls->dyd;
   Vardesc *var;
@@ -767,7 +767,7 @@ static void leaveblock (FuncState *fs) {
 */
 static Proto *addprototype (LexState *ls) {
   Proto *clp;
-  lua_State *L = ls->L;
+  lua55_State *L = ls->L;
   FuncState *fs = ls->fs;
   Proto *f = fs->f;  /* prototype of current function */
   if (fs->np >= f->sizep) {
@@ -797,7 +797,7 @@ static void codeclosure (LexState *ls, expdesc *v) {
 
 
 static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
-  lua_State *L = ls->L;
+  lua55_State *L = ls->L;
   Proto *f = fs->f;
   fs->prev = ls->fs;  /* linked list of funcstates */
   fs->ls = ls;
@@ -828,7 +828,7 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
 
 
 static void close_func (LexState *ls) {
-  lua_State *L = ls->L;
+  lua55_State *L = ls->L;
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
   luaK_ret(fs, luaY_nvarstack(fs), 0);  /* final return */
@@ -2165,7 +2165,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
 }
 
 
-LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
+LClosure *luaY_parser (lua55_State *L, ZIO *z, Mbuffer *buff,
                        Dyndata *dyd, const char *name, int firstchar) {
   LexState lexstate;
   FuncState funcstate;

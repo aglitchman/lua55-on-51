@@ -36,7 +36,7 @@
 static const char strlocal[] = "local";
 static const char strupval[] = "upvalue";
 
-static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
+static const char *funcnamefromcall (lua55_State *L, CallInfo *ci,
                                                    const char **name);
 
 
@@ -130,7 +130,7 @@ static void settraps (CallInfo *ci) {
 ** for all platforms where it runs). Moreover, 'hook' is always checked
 ** before being called (see 'luaD_hook').
 */
-LUA_API void lua55_sethook (lua_State *L, lua_Hook func, int mask, int count) {
+LUA_API void lua55_sethook (lua55_State *L, lua_Hook func, int mask, int count) {
   if (func == NULL || mask == 0) {  /* turn off hooks? */
     mask = 0;
     func = NULL;
@@ -144,22 +144,22 @@ LUA_API void lua55_sethook (lua_State *L, lua_Hook func, int mask, int count) {
 }
 
 
-LUA_API lua_Hook lua55_gethook (lua_State *L) {
+LUA_API lua_Hook lua55_gethook (lua55_State *L) {
   return L->hook;
 }
 
 
-LUA_API int lua55_gethookmask (lua_State *L) {
+LUA_API int lua55_gethookmask (lua55_State *L) {
   return L->hookmask;
 }
 
 
-LUA_API int lua55_gethookcount (lua_State *L) {
+LUA_API int lua55_gethookcount (lua55_State *L) {
   return L->basehookcount;
 }
 
 
-LUA_API int lua55_getstack (lua_State *L, int level, lua_Debug *ar) {
+LUA_API int lua55_getstack (lua55_State *L, int level, lua_Debug *ar) {
   int status;
   CallInfo *ci;
   if (level < 0) return 0;  /* invalid (negative) level */
@@ -195,7 +195,7 @@ static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
 }
 
 
-const char *luaG_findlocal (lua_State *L, CallInfo *ci, int n, StkId *pos) {
+const char *luaG_findlocal (lua55_State *L, CallInfo *ci, int n, StkId *pos) {
   StkId base = ci->func.p + 1;
   const char *name = NULL;
   if (isLua(ci)) {
@@ -219,7 +219,7 @@ const char *luaG_findlocal (lua_State *L, CallInfo *ci, int n, StkId *pos) {
 }
 
 
-LUA_API const char *lua55_getlocal (lua_State *L, const lua_Debug *ar, int n) {
+LUA_API const char *lua55_getlocal (lua55_State *L, const lua_Debug *ar, int n) {
   const char *name;
   lua_lock(L);
   if (ar == NULL) {  /* information about non-active function? */
@@ -241,7 +241,7 @@ LUA_API const char *lua55_getlocal (lua_State *L, const lua_Debug *ar, int n) {
 }
 
 
-LUA_API const char *lua55_setlocal (lua_State *L, const lua_Debug *ar, int n) {
+LUA_API const char *lua55_setlocal (lua55_State *L, const lua_Debug *ar, int n) {
   StkId pos = NULL;  /* to avoid warnings */
   const char *name;
   lua_lock(L);
@@ -289,7 +289,7 @@ static int nextline (const Proto *p, int currentline, int pc) {
 }
 
 
-static void collectvalidlines (lua_State *L, Closure *f) {
+static void collectvalidlines (lua55_State *L, Closure *f) {
   if (!LuaClosure(f)) {
     setnilvalue(s2v(L->top.p));
     api_incr_top(L);
@@ -320,7 +320,7 @@ static void collectvalidlines (lua_State *L, Closure *f) {
 }
 
 
-static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name) {
+static const char *getfuncname (lua55_State *L, CallInfo *ci, const char **name) {
   /* calling function is a known function? */
   if (ci != NULL && !(ci->callstatus & CIST_TAIL))
     return funcnamefromcall(L, ci->previous, name);
@@ -328,7 +328,7 @@ static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name) {
 }
 
 
-static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
+static int auxgetinfo (lua55_State *L, const char *what, lua_Debug *ar,
                        Closure *f, CallInfo *ci) {
   int status = 1;
   for (; *what; what++) {
@@ -392,7 +392,7 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
 }
 
 
-LUA_API int lua55_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
+LUA_API int lua55_getinfo (lua55_State *L, const char *what, lua_Debug *ar) {
   int status;
   Closure *cl;
   CallInfo *ci;
@@ -612,7 +612,7 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
 ** Returns what the name is (e.g., "for iterator", "method",
 ** "metamethod") and sets '*name' to point to the name.
 */
-static const char *funcnamefromcode (lua_State *L, const Proto *p,
+static const char *funcnamefromcode (lua55_State *L, const Proto *p,
                                      int pc, const char **name) {
   TMS tm = (TMS)0;  /* (initial value avoids warnings) */
   Instruction i = p->code[pc];  /* calling instruction */
@@ -656,7 +656,7 @@ static const char *funcnamefromcode (lua_State *L, const Proto *p,
 /*
 ** Try to find a name for a function based on how it was called.
 */
-static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
+static const char *funcnamefromcall (lua55_State *L, CallInfo *ci,
                                                    const char **name) {
   if (ci->callstatus & CIST_HOOKED) {  /* was it called inside a hook? */
     *name = "?";
@@ -712,7 +712,7 @@ static const char *getupvalname (CallInfo *ci, const TValue *o,
 }
 
 
-static const char *formatvarinfo (lua_State *L, const char *kind,
+static const char *formatvarinfo (lua55_State *L, const char *kind,
                                                 const char *name) {
   if (kind == NULL)
     return "";  /* no information */
@@ -724,7 +724,7 @@ static const char *formatvarinfo (lua_State *L, const char *kind,
 ** Build a string with a "description" for the value 'o', such as
 ** "variable 'x'" or "upvalue 'y'".
 */
-static const char *varinfo (lua_State *L, const TValue *o) {
+static const char *varinfo (lua55_State *L, const TValue *o) {
   CallInfo *ci = L->ci;
   const char *name = NULL;  /* to avoid warnings */
   const char *kind = NULL;
@@ -743,7 +743,7 @@ static const char *varinfo (lua_State *L, const TValue *o) {
 /*
 ** Raise a type error
 */
-static l_noret typeerror (lua_State *L, const TValue *o, const char *op,
+static l_noret typeerror (lua55_State *L, const TValue *o, const char *op,
                           const char *extra) {
   const char *t = luaT_objtypename(L, o);
   luaG_runerror(L, "attempt to %s a %s value%s", op, t, extra);
@@ -754,7 +754,7 @@ static l_noret typeerror (lua_State *L, const TValue *o, const char *op,
 ** Raise a type error with "standard" information about the faulty
 ** object 'o' (using 'varinfo').
 */
-l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
+l_noret luaG_typeerror (lua55_State *L, const TValue *o, const char *op) {
   typeerror(L, o, op, varinfo(L, o));
 }
 
@@ -764,7 +764,7 @@ l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
 ** for the object based on how it was called ('funcnamefromcall'); if it
 ** cannot get a name there, try 'varinfo'.
 */
-l_noret luaG_callerror (lua_State *L, const TValue *o) {
+l_noret luaG_callerror (lua55_State *L, const TValue *o) {
   CallInfo *ci = L->ci;
   const char *name = NULL;  /* to avoid warnings */
   const char *kind = funcnamefromcall(L, ci, &name);
@@ -773,19 +773,19 @@ l_noret luaG_callerror (lua_State *L, const TValue *o) {
 }
 
 
-l_noret luaG_forerror (lua_State *L, const TValue *o, const char *what) {
+l_noret luaG_forerror (lua55_State *L, const TValue *o, const char *what) {
   luaG_runerror(L, "bad 'for' %s (number expected, got %s)",
                    what, luaT_objtypename(L, o));
 }
 
 
-l_noret luaG_concaterror (lua_State *L, const TValue *p1, const TValue *p2) {
+l_noret luaG_concaterror (lua55_State *L, const TValue *p1, const TValue *p2) {
   if (ttisstring(p1) || cvt2str(p1)) p1 = p2;
   luaG_typeerror(L, p1, "concatenate");
 }
 
 
-l_noret luaG_opinterror (lua_State *L, const TValue *p1,
+l_noret luaG_opinterror (lua55_State *L, const TValue *p1,
                          const TValue *p2, const char *msg) {
   if (!ttisnumber(p1))  /* first operand is wrong? */
     p2 = p1;  /* now second is wrong */
@@ -796,7 +796,7 @@ l_noret luaG_opinterror (lua_State *L, const TValue *p1,
 /*
 ** Error when both values are convertible to numbers, but not to integers
 */
-l_noret luaG_tointerror (lua_State *L, const TValue *p1, const TValue *p2) {
+l_noret luaG_tointerror (lua55_State *L, const TValue *p1, const TValue *p2) {
   lua_Integer temp;
   if (!luaV_tointegerns(p1, &temp, LUA_FLOORN2I))
     p2 = p1;
@@ -804,7 +804,7 @@ l_noret luaG_tointerror (lua_State *L, const TValue *p1, const TValue *p2) {
 }
 
 
-l_noret luaG_ordererror (lua_State *L, const TValue *p1, const TValue *p2) {
+l_noret luaG_ordererror (lua55_State *L, const TValue *p1, const TValue *p2) {
   const char *t1 = luaT_objtypename(L, p1);
   const char *t2 = luaT_objtypename(L, p2);
   if (strcmp(t1, t2) == 0)
@@ -814,7 +814,7 @@ l_noret luaG_ordererror (lua_State *L, const TValue *p1, const TValue *p2) {
 }
 
 
-l_noret luaG_errnnil (lua_State *L, LClosure *cl, int k) {
+l_noret luaG_errnnil (lua55_State *L, LClosure *cl, int k) {
   const char *globalname = "?";  /* default name if k == 0 */
   if (k > 0)
     kname(cl->p, k - 1, &globalname);
@@ -823,7 +823,7 @@ l_noret luaG_errnnil (lua_State *L, LClosure *cl, int k) {
 
 
 /* add src:line information to 'msg' */
-const char *luaG_addinfo (lua_State *L, const char *msg, TString *src,
+const char *luaG_addinfo (lua55_State *L, const char *msg, TString *src,
                                         int line) {
   if (src == NULL)  /* no debug information? */
     return luaO_pushfstring(L, "?:?: %s", msg);
@@ -837,7 +837,7 @@ const char *luaG_addinfo (lua_State *L, const char *msg, TString *src,
 }
 
 
-l_noret luaG_errormsg (lua_State *L) {
+l_noret luaG_errormsg (lua55_State *L) {
   if (L->errfunc != 0) {  /* is there an error handling function? */
     StkId errfunc = restorestack(L, L->errfunc);
     lua_assert(ttisfunction(s2v(errfunc)));
@@ -854,7 +854,7 @@ l_noret luaG_errormsg (lua_State *L) {
 }
 
 
-l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
+l_noret luaG_runerror (lua55_State *L, const char *fmt, ...) {
   CallInfo *ci = L->ci;
   const char *msg;
   va_list argp;
@@ -907,7 +907,7 @@ static int changedline (const Proto *p, int oldpc, int newpc) {
 ** a line/count hook before the call hook. Functions coming from
 ** an yield already called 'luaD_hookcall' before yielding.)
 */
-int luaG_tracecall (lua_State *L) {
+int luaG_tracecall (lua55_State *L) {
   CallInfo *ci = L->ci;
   Proto *p = ci_func(ci)->p;
   ci->u.l.trap = 1;  /* ensure hooks will be checked */
@@ -933,7 +933,7 @@ int luaG_tracecall (lua_State *L) {
 ** This function is not "Protected" when called, so it should correct
 ** 'L->top.p' before calling anything that can run the GC.
 */
-int luaG_traceexec (lua_State *L, const Instruction *pc) {
+int luaG_traceexec (lua55_State *L, const Instruction *pc) {
   CallInfo *ci = L->ci;
   lu_byte mask = cast_byte(L->hookmask);
   const Proto *p = ci_func(ci)->p;

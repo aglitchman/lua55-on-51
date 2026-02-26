@@ -112,7 +112,7 @@ l_mem luaO_applyparam (lu_byte p, l_mem x) {
 }
 
 
-static lua_Integer intarith (lua_State *L, int op, lua_Integer v1,
+static lua_Integer intarith (lua55_State *L, int op, lua_Integer v1,
                                                    lua_Integer v2) {
   switch (op) {
     case LUA_OPADD: return intop(+, v1, v2);
@@ -132,7 +132,7 @@ static lua_Integer intarith (lua_State *L, int op, lua_Integer v1,
 }
 
 
-static lua_Number numarith (lua_State *L, int op, lua_Number v1,
+static lua_Number numarith (lua55_State *L, int op, lua_Number v1,
                                                   lua_Number v2) {
   switch (op) {
     case LUA_OPADD: return luai_numadd(L, v1, v2);
@@ -148,7 +148,7 @@ static lua_Number numarith (lua_State *L, int op, lua_Number v1,
 }
 
 
-int luaO_rawarith (lua_State *L, int op, const TValue *p1, const TValue *p2,
+int luaO_rawarith (lua55_State *L, int op, const TValue *p1, const TValue *p2,
                    TValue *res) {
   switch (op) {
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
@@ -185,7 +185,7 @@ int luaO_rawarith (lua_State *L, int op, const TValue *p1, const TValue *p2,
 }
 
 
-void luaO_arith (lua_State *L, int op, const TValue *p1, const TValue *p2,
+void luaO_arith (lua55_State *L, int op, const TValue *p1, const TValue *p2,
                  StkId res) {
   if (!luaO_rawarith(L, op, p1, p2, s2v(res))) {
     /* could not perform raw operation; try metamethod */
@@ -461,7 +461,7 @@ unsigned luaO_tostringbuff (const TValue *obj, char *buff) {
 /*
 ** Convert a number object to a Lua string, replacing the value at 'obj'
 */
-void luaO_tostring (lua_State *L, TValue *obj) {
+void luaO_tostring (lua55_State *L, TValue *obj) {
   char buff[LUA_N2SBUFFSZ];
   unsigned len = luaO_tostringbuff(obj, buff);
   setsvalue(L, obj, luaS_newlstr(L, buff, len));
@@ -488,7 +488,7 @@ void luaO_tostring (lua_State *L, TValue *obj) {
 ** building result (memory error [1] or buffer overflow [2]).
 */
 typedef struct BuffFS {
-  lua_State *L;
+  lua55_State *L;
   char *b;
   size_t buffsize;
   size_t blen;  /* length of string in 'buff' */
@@ -497,7 +497,7 @@ typedef struct BuffFS {
 } BuffFS;
 
 
-static void initbuff (lua_State *L, BuffFS *buff) {
+static void initbuff (lua55_State *L, BuffFS *buff) {
   buff->L = L;
   buff->b = buff->space;
   buff->buffsize = sizeof(buff->space);
@@ -510,7 +510,7 @@ static void initbuff (lua_State *L, BuffFS *buff) {
 ** Push final result from 'luaO_pushvfstring'. This function may raise
 ** errors explicitly or through memory errors, so it must run protected.
 */
-static void pushbuff (lua_State *L, void *ud) {
+static void pushbuff (lua55_State *L, void *ud) {
   BuffFS *buff = cast(BuffFS*, ud);
   switch (buff->err) {
     case 1:  /* memory error */
@@ -534,7 +534,7 @@ static void pushbuff (lua_State *L, void *ud) {
 
 
 static const char *clearbuff (BuffFS *buff) {
-  lua_State *L = buff->L;
+  lua55_State *L = buff->L;
   const char *res;
   if (luaD_rawrunprotected(L, pushbuff, buff) != LUA_OK)  /* errors? */
     res = NULL;  /* error message is on the top of the stack */
@@ -593,7 +593,7 @@ static void addnum2buff (BuffFS *buff, TValue *num) {
 ** this function handles only '%d', '%c', '%f', '%p', '%s', and '%%'
    conventional formats, plus Lua-specific '%I' and '%U'
 */
-const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
+const char *luaO_pushvfstring (lua55_State *L, const char *fmt, va_list argp) {
   BuffFS buff;  /* holds last part of the result */
   const char *e;  /* points to next '%' */
   initbuff(L, &buff);
@@ -659,7 +659,7 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
 }
 
 
-const char *luaO_pushfstring (lua_State *L, const char *fmt, ...) {
+const char *luaO_pushfstring (lua55_State *L, const char *fmt, ...) {
   const char *msg;
   va_list argp;
   va_start(argp, fmt);

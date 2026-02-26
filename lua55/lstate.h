@@ -282,7 +282,7 @@ struct CallInfo {
 /*
 ** 'per thread' state
 */
-struct lua_State {
+struct lua55_State {
   CommonHeader;
   lu_byte allowhook;
   TStatus status;
@@ -294,7 +294,7 @@ struct lua_State {
   UpVal *openupval;  /* list of open upvalues in this stack */
   StkIdRel tbclist;  /* list of to-be-closed variables */
   GCObject *gclist;
-  struct lua_State *twups;  /* list of threads with open upvalues */
+  struct lua55_State *twups;  /* list of threads with open upvalues */
   struct lua_longjmp *errorJmp;  /* current error recover point */
   CallInfo base_ci;  /* CallInfo for first level (C host) */
   volatile lua_Hook hook;
@@ -317,7 +317,7 @@ struct lua_State {
 */
 typedef struct LX {
   lu_byte extra_[LUA_EXTRASPACE];
-  lua_State l;
+  lua55_State l;
 } LX;
 
 
@@ -360,7 +360,7 @@ typedef struct global_State {
   GCObject *finobjsur;  /* list of survival objects with finalizers */
   GCObject *finobjold1;  /* list of old1 objects with finalizers */
   GCObject *finobjrold;  /* list of really old objects with finalizers */
-  struct lua_State *twups;  /* list of threads with open upvalues */
+  struct lua55_State *twups;  /* list of threads with open upvalues */
   lua_CFunction panic;  /* to be called in unprotected errors */
   TString *memerrmsg;  /* message for memory-allocation errors */
   TString *tmname[TM_N];  /* array with tag-method names */
@@ -398,7 +398,7 @@ union GCUnion {
   union Closure cl;
   struct Table h;
   struct Proto p;
-  struct lua_State th;  /* thread */
+  struct lua55_State th;  /* thread */
   struct UpVal upv;
 };
 
@@ -436,15 +436,15 @@ union GCUnion {
 
 
 LUAI_FUNC void luaE_setdebt (global_State *g, l_mem debt);
-LUAI_FUNC void luaE_freethread (lua_State *L, lua_State *L1);
-LUAI_FUNC lu_mem luaE_threadsize (lua_State *L);
-LUAI_FUNC CallInfo *luaE_extendCI (lua_State *L);
-LUAI_FUNC void luaE_shrinkCI (lua_State *L);
-LUAI_FUNC void luaE_checkcstack (lua_State *L);
-LUAI_FUNC void luaE_incCstack (lua_State *L);
-LUAI_FUNC void luaE_warning (lua_State *L, const char *msg, int tocont);
-LUAI_FUNC void luaE_warnerror (lua_State *L, const char *where);
-LUAI_FUNC TStatus luaE_resetthread (lua_State *L, TStatus status);
+LUAI_FUNC void luaE_freethread (lua55_State *L, lua55_State *L1);
+LUAI_FUNC lu_mem luaE_threadsize (lua55_State *L);
+LUAI_FUNC CallInfo *luaE_extendCI (lua55_State *L);
+LUAI_FUNC void luaE_shrinkCI (lua55_State *L);
+LUAI_FUNC void luaE_checkcstack (lua55_State *L);
+LUAI_FUNC void luaE_incCstack (lua55_State *L);
+LUAI_FUNC void luaE_warning (lua55_State *L, const char *msg, int tocont);
+LUAI_FUNC void luaE_warnerror (lua55_State *L, const char *where);
+LUAI_FUNC TStatus luaE_resetthread (lua55_State *L, TStatus status);
 
 
 #endif

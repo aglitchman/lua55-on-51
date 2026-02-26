@@ -84,7 +84,7 @@ static const char *utf8_decode (const char *s, l_uint32 *val, int strict) {
 ** start in the range [i,j], or nil + current position if 's' is not
 ** well formed in that interval
 */
-static int utflen (lua_State *L) {
+static int utflen (lua55_State *L) {
   lua_Integer n = 0;  /* counter for the number of characters */
   size_t len;  /* string length in bytes */
   const char *s = lua55L_checklstring(L, 1, &len);
@@ -114,7 +114,7 @@ static int utflen (lua_State *L) {
 ** codepoint(s, [i, [j [, lax]]]) -> returns codepoints for all
 ** characters that start in the range [i,j]
 */
-static int codepoint (lua_State *L) {
+static int codepoint (lua55_State *L) {
   size_t len;
   const char *s = lua55L_checklstring(L, 1, &len);
   lua_Integer posi = u_posrelat(lua55L_optinteger(L, 2, 1), len);
@@ -143,7 +143,7 @@ static int codepoint (lua_State *L) {
 }
 
 
-static void pushutfchar (lua_State *L, int arg) {
+static void pushutfchar (lua55_State *L, int arg) {
   lua_Unsigned code = (lua_Unsigned)lua55L_checkinteger(L, arg);
   lua55L_argcheck(L, code <= MAXUTF, arg, "value out of range");
   lua55_pushfstring(L, "%U", (long)code);
@@ -153,7 +153,7 @@ static void pushutfchar (lua_State *L, int arg) {
 /*
 ** utfchar(n1, n2, ...)  -> char(n1)..char(n2)...
 */
-static int utfchar (lua_State *L) {
+static int utfchar (lua55_State *L) {
   int n = lua55_gettop(L);  /* number of arguments */
   if (n == 1)  /* optimize common case of single char */
     pushutfchar(L, 1);
@@ -175,7 +175,7 @@ static int utfchar (lua_State *L) {
 ** offset(s, n, [i])  -> indices where n-th character counting from
 **   position 'i' starts and ends; 0 means character at 'i'.
 */
-static int byteoffset (lua_State *L) {
+static int byteoffset (lua55_State *L) {
   size_t len;
   const char *s = lua55L_checklstring(L, 1, &len);
   lua_Integer n  = lua55L_checkinteger(L, 2);
@@ -225,7 +225,7 @@ static int byteoffset (lua_State *L) {
 }
 
 
-static int iter_aux (lua_State *L, int strict) {
+static int iter_aux (lua55_State *L, int strict) {
   size_t len;
   const char *s = lua55L_checklstring(L, 1, &len);
   lua_Unsigned n = (lua_Unsigned)lua55_tointeger(L, 2);
@@ -246,16 +246,16 @@ static int iter_aux (lua_State *L, int strict) {
 }
 
 
-static int iter_auxstrict (lua_State *L) {
+static int iter_auxstrict (lua55_State *L) {
   return iter_aux(L, 1);
 }
 
-static int iter_auxlax (lua_State *L) {
+static int iter_auxlax (lua55_State *L) {
   return iter_aux(L, 0);
 }
 
 
-static int iter_codes (lua_State *L) {
+static int iter_codes (lua55_State *L) {
   int lax = lua55_toboolean(L, 2);
   const char *s = lua55L_checkstring(L, 1);
   lua55L_argcheck(L, !iscontp(s), 1, MSGInvalid);
@@ -282,7 +282,7 @@ static const luaL_Reg funcs[] = {
 };
 
 
-LUAMOD_API int lua55open_utf8 (lua_State *L) {
+LUAMOD_API int lua55open_utf8 (lua55_State *L) {
   lua55L_newlib(L, funcs);
   lua55_pushlstring(L, UTF8PATT, sizeof(UTF8PATT)/sizeof(char) - 1);
   lua55_setfield(L, -2, "charpattern");
