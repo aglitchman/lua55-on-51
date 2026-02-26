@@ -207,21 +207,35 @@ Create **external** files (DO NOT modify Luau sources):
 
 ## Phase 6: Build Example with Luau + Compat Layer
 
-- Build compat layer as static library: `make compat-lib` (compiles `compat/lua51_compat.cpp` → `compat/libcompat.a`)
-- Build example using only compat include path: `make example-luau` (`-Icompat/include`, links `libcompat.a` + Luau libs)
-- The example's `main.c` includes only `lua.h`, `lauxlib.h`, `lualib.h` — no `#ifdef`, no compat-specific includes
+- Build compat layer as static library: `make compat-lib` (compiles `luau_bridge.cpp` + `lua51_compat.cpp` → `libcompat.a`)
+- Build example: `make example-luau` (`-Icompat/include -Ilua51/src`, links `libcompat.a` + Luau libs)
+- `main.c` includes only `lua.h`, `lauxlib.h`, `lualib.h` — no `#ifdef`, no compat-specific includes
 - Run and verify all tests pass identically to the Lua 5.1 version
 
 ---
 
-## Architecture: Header and Library Separation
+## Architecture: Drop-in Replacement via Two-File Compat Library
 
-**Key principle:** `example/main.c` includes ONLY standard Lua 5.1 header names (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. The build system selects which headers to use via `-I` paths:
+**Key principle:** `example/main.c` includes ONLY standard Lua 5.1 header names (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. The build system selects which headers/libraries to use:
 
-- **Lua 5.1 build:** `-Ilua51/src` — uses original Lua 5.1 headers
-- **Luau build:** `-Icompat/include` — uses compat headers that present Lua 5.1 API surface on top of Luau
+- **Lua 5.1 build:** `-Ilua51/src`, link `liblua.a`
+- **Luau build:** `-Icompat/include -Ilua51/src`, link `libcompat.a` + Luau `.a` files
 
-The compat layer is built as a **static library** (`libcompat.a`) that is linked together with Luau libraries. The compat headers (`compat/include/lua.h`, etc.) include Luau's real headers internally and add macros/declarations for Lua 5.1 compatibility. The compat `.cpp` implementation is compiled separately against Luau headers only.
+### Header Layer (compat/include/)
+
+Thin wrappers around the real Lua 5.1 headers. The only change is patching type tag constants — Luau inserts `LUA_TVECTOR=4` which shifts `LUA_TSTRING` through `LUA_TTHREAD` by +1. The wrapper `compat/include/lua.h` includes `lua51/src/lua.h` then `#undef`/`#define`s the affected constants. `lauxlib.h` and `lualib.h` just pass through.
+
+### Library Layer (libcompat.a)
+
+Two-file architecture to avoid C++ name mangling conflicts:
+
+1. **`luau_bridge.cpp`** — Compiled with Luau headers. Provides `extern "C"` bridge functions (`luau_bridge_*`) for Luau APIs that have the same name but different C++ signatures from Lua 5.1 (e.g., `lua_getinfo`, `lua_resume`, `lua_pushinteger`).
+
+2. **`lua51_compat.cpp`** — Compiled with Lua 5.1 headers (via compat/include/). Provides all missing or signature-incompatible Lua 5.1 functions with correct C++ name mangling. Calls Luau through:
+   - Bridge functions for same-name-different-signature APIs
+   - Direct forward declarations for Luau-unique APIs (e.g., `lua_tonumberx`, `lua_pushcclosurek`)
+
+Functions with identical C++ signatures in both Lua 5.1 and Luau (e.g., `lua_gettop`, `lua_settop`, `lua_rawequal`) are provided directly by Luau's `.a` files.
 
 ## File Structure (Final)
 
@@ -233,10 +247,11 @@ ext_luau/
 ├── luau/                     # Luau sources (untouched)
 ├── compat/
 │   ├── include/
-│   │   ├── lua.h             # Lua 5.1 API compat header (wraps Luau's lua.h)
-│   │   ├── lauxlib.h         # Lua 5.1 auxlib compat header (wraps Luau's lualib.h)
-│   │   └── lualib.h          # Lua 5.1 standard libs compat header
-│   ├── lua51_compat.cpp      # Compat function implementations
+│   │   ├── lua.h             # Thin wrapper: includes lua51 lua.h + patches type constants
+│   │   ├── lauxlib.h         # Pass-through to lua51 lauxlib.h
+│   │   └── lualib.h          # Pass-through to lua51 lualib.h
+│   ├── luau_bridge.cpp       # Luau-side bridges (compiled with Luau headers)
+│   ├── lua51_compat.cpp      # Lua 5.1 API shim (compiled with Lua 5.1 headers)
 │   └── libcompat.a           # Built static library
 └── example/
     └── main.c                # Test app using ONLY standard Lua 5.1 headers
