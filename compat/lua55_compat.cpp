@@ -639,36 +639,6 @@ void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup)
 static int compat51_unpack(lua_State *L);
 static int compat51_loadstring(lua_State *L);
 static int compat51_gcinfo(lua_State *L);
-static const luaL_Reg compat51_mathlib[];
-static const luaL_Reg compat51_tablib[];
-
-void luaL_openlibs(lua_State *L) {
-    lua55L_openlibs(L);
-    /* Re-register compat51 additions (lua55L_openlibs calls lua55open_*
-       directly, bypassing our luaopen_* wrappers) */
-    /* base: add unpack, loadstring, gcinfo to _G */
-    lua55_pushglobaltable(L);
-    lua55_pushcclosure(L, compat51_unpack, 0);
-    lua55_setfield(L, -2, "unpack");
-    lua55_pushcclosure(L, compat51_loadstring, 0);
-    lua55_setfield(L, -2, "loadstring");
-    lua55_pushcclosure(L, compat51_gcinfo, 0);
-    lua55_setfield(L, -2, "gcinfo");
-    lua55_pop(L, 1);
-    /* math */
-    lua55_getglobal(L, "math");
-    lua55L_setfuncs(L, compat51_mathlib, 0);
-    lua55_pop(L, 1);
-    /* table */
-    lua55_getglobal(L, "table");
-    lua55L_setfuncs(L, compat51_tablib, 0);
-    lua55_pop(L, 1);
-    /* string: gfind = gmatch */
-    lua55_getglobal(L, "string");
-    lua55_getfield(L, -1, "gmatch");
-    lua55_setfield(L, -2, "gfind");
-    lua55_pop(L, 1);
-}
 
 int luaL_getmetafield(lua_State *L, int obj, const char *e) {
     return lua55L_getmetafield(L, IS_PSEUDO51(obj) ? xidx(obj) : obj, e);
@@ -987,6 +957,34 @@ static const luaL_Reg compat51_tablib[] = {
     {"setn",     compat51_table_setn},
     {NULL, NULL}
 };
+
+void luaL_openlibs(lua_State *L) {
+    lua55L_openlibs(L);
+    /* Re-register compat51 additions (lua55L_openlibs calls lua55open_*
+       directly, bypassing our luaopen_* wrappers) */
+    /* base: add unpack, loadstring, gcinfo to _G */
+    lua55_pushglobaltable(L);
+    lua55_pushcclosure(L, compat51_unpack, 0);
+    lua55_setfield(L, -2, "unpack");
+    lua55_pushcclosure(L, compat51_loadstring, 0);
+    lua55_setfield(L, -2, "loadstring");
+    lua55_pushcclosure(L, compat51_gcinfo, 0);
+    lua55_setfield(L, -2, "gcinfo");
+    lua55_pop(L, 1);
+    /* math */
+    lua55_getglobal(L, "math");
+    lua55L_setfuncs(L, compat51_mathlib, 0);
+    lua55_pop(L, 1);
+    /* table */
+    lua55_getglobal(L, "table");
+    lua55L_setfuncs(L, compat51_tablib, 0);
+    lua55_pop(L, 1);
+    /* string: gfind = gmatch */
+    lua55_getglobal(L, "string");
+    lua55_getfield(L, -1, "gmatch");
+    lua55_setfield(L, -2, "gfind");
+    lua55_pop(L, 1);
+}
 
 /* -- base compat -------------------------------------------------- */
 
