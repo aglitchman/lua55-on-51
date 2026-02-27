@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 4.1)
 project(compat55 LANGUAGES C)
 
+# Use static CRT on MSVC (/MT) to avoid MSVCRT.lib dependency
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # Lua 5.5 sources (exclude CLI and single-file build)
 file(GLOB LUA55_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/lua55/*.c)
 list(FILTER LUA55_SOURCES EXCLUDE REGEX "/(lua|onelua)\\.c$")
