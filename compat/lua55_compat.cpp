@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 /* Include lua55 headers — LUA_REGISTRYINDEX gets the lua55 value */
 #include "lua55/lua.h"
@@ -634,8 +635,39 @@ void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup)
     }
 }
 
+/* Forward declarations for compat51 functions (defined below) */
+static int compat51_unpack(lua_State *L);
+static int compat51_loadstring(lua_State *L);
+static int compat51_gcinfo(lua_State *L);
+static const luaL_Reg compat51_mathlib[];
+static const luaL_Reg compat51_tablib[];
+
 void luaL_openlibs(lua_State *L) {
     lua55L_openlibs(L);
+    /* Re-register compat51 additions (lua55L_openlibs calls lua55open_*
+       directly, bypassing our luaopen_* wrappers) */
+    /* base: add unpack, loadstring, gcinfo to _G */
+    lua55_pushglobaltable(L);
+    lua55_pushcclosure(L, compat51_unpack, 0);
+    lua55_setfield(L, -2, "unpack");
+    lua55_pushcclosure(L, compat51_loadstring, 0);
+    lua55_setfield(L, -2, "loadstring");
+    lua55_pushcclosure(L, compat51_gcinfo, 0);
+    lua55_setfield(L, -2, "gcinfo");
+    lua55_pop(L, 1);
+    /* math */
+    lua55_getglobal(L, "math");
+    lua55L_setfuncs(L, compat51_mathlib, 0);
+    lua55_pop(L, 1);
+    /* table */
+    lua55_getglobal(L, "table");
+    lua55L_setfuncs(L, compat51_tablib, 0);
+    lua55_pop(L, 1);
+    /* string: gfind = gmatch */
+    lua55_getglobal(L, "string");
+    lua55_getfield(L, -1, "gmatch");
+    lua55_setfield(L, -2, "gfind");
+    lua55_pop(L, 1);
 }
 
 int luaL_getmetafield(lua_State *L, int obj, const char *e) {
@@ -838,16 +870,202 @@ void luaL_pushresult(void *B_raw) {
 }
 
 /* ================================================================
+ *  Lua 5.1 compat: standard library functions removed in Lua 5.5
+ * ================================================================ */
+
+/* -- math compat -------------------------------------------------- */
+
+static int compat51_math_atan2(lua_State *L) {
+    lua55_pushnumber(L, atan2(lua55L_checknumber(L, 1),
+                              lua55L_checknumber(L, 2)));
+    return 1;
+}
+
+static int compat51_math_cosh(lua_State *L) {
+    lua55_pushnumber(L, cosh(lua55L_checknumber(L, 1)));
+    return 1;
+}
+
+static int compat51_math_sinh(lua_State *L) {
+    lua55_pushnumber(L, sinh(lua55L_checknumber(L, 1)));
+    return 1;
+}
+
+static int compat51_math_tanh(lua_State *L) {
+    lua55_pushnumber(L, tanh(lua55L_checknumber(L, 1)));
+    return 1;
+}
+
+static int compat51_math_pow(lua_State *L) {
+    lua55_pushnumber(L, pow(lua55L_checknumber(L, 1),
+                            lua55L_checknumber(L, 2)));
+    return 1;
+}
+
+static int compat51_math_log10(lua_State *L) {
+    lua55_pushnumber(L, log10(lua55L_checknumber(L, 1)));
+    return 1;
+}
+
+static const luaL_Reg compat51_mathlib[] = {
+    {"atan2", compat51_math_atan2},
+    {"cosh",  compat51_math_cosh},
+    {"sinh",  compat51_math_sinh},
+    {"tanh",  compat51_math_tanh},
+    {"pow",   compat51_math_pow},
+    {"log10", compat51_math_log10},
+    {NULL, NULL}
+};
+
+/* -- table compat ------------------------------------------------- */
+
+static int compat51_table_foreach(lua_State *L) {
+    lua55L_checktype(L, 1, LUA_TTABLE);
+    lua55L_checktype(L, 2, LUA_TFUNCTION);
+    lua55_pushnil(L);
+    while (lua55_next(L, 1)) {
+        lua55_pushvalue(L, 2);
+        lua55_pushvalue(L, -3);
+        lua55_pushvalue(L, -3);
+        lua55_call(L, 2, 1);
+        if (!lua55_isnil(L, -1))
+            return 1;
+        lua55_pop(L, 2);
+    }
+    return 0;
+}
+
+static int compat51_table_foreachi(lua_State *L) {
+    lua_Integer i;
+    lua_Integer n;
+    lua55L_checktype(L, 1, LUA_TTABLE);
+    lua55L_checktype(L, 2, LUA_TFUNCTION);
+    n = (lua_Integer)lua55_rawlen(L, 1);
+    for (i = 1; i <= n; i++) {
+        lua55_pushvalue(L, 2);
+        lua55_pushinteger(L, i);
+        lua55_rawgeti(L, 1, i);
+        lua55_call(L, 2, 1);
+        if (!lua55_isnil(L, -1))
+            return 1;
+        lua55_pop(L, 1);
+    }
+    return 0;
+}
+
+static int compat51_table_getn(lua_State *L) {
+    lua55L_checktype(L, 1, LUA_TTABLE);
+    lua55_pushinteger(L, (lua_Integer)lua55_rawlen(L, 1));
+    return 1;
+}
+
+static int compat51_table_maxn(lua_State *L) {
+    lua_Number max = 0;
+    lua55L_checktype(L, 1, LUA_TTABLE);
+    lua55_pushnil(L);
+    while (lua55_next(L, 1)) {
+        lua55_pop(L, 1);
+        if (lua55_type(L, -1) == LUA_TNUMBER) {
+            lua_Number v = lua55_tonumberx(L, -1, NULL);
+            if (v > max) max = v;
+        }
+    }
+    lua55_pushnumber(L, max);
+    return 1;
+}
+
+static int compat51_table_setn(lua_State *L) {
+    lua55L_checktype(L, 1, LUA_TTABLE);
+    return lua55L_error(L, "'setn' is obsolete");
+}
+
+static const luaL_Reg compat51_tablib[] = {
+    {"foreach",  compat51_table_foreach},
+    {"foreachi", compat51_table_foreachi},
+    {"getn",     compat51_table_getn},
+    {"maxn",     compat51_table_maxn},
+    {"setn",     compat51_table_setn},
+    {NULL, NULL}
+};
+
+/* -- base compat -------------------------------------------------- */
+
+static int compat51_unpack(lua_State *L) {
+    lua_Integer i, e, n;
+    lua55L_checktype(L, 1, LUA_TTABLE);
+    i = lua55L_optinteger(L, 2, 1);
+    if (lua55_isnoneornil(L, 3))
+        e = (lua_Integer)lua55_rawlen(L, 1);
+    else
+        e = lua55L_checkinteger(L, 3);
+    if (i > e) return 0;
+    n = e - i + 1;
+    if (n <= 0 || !lua55_checkstack(L, (int)n))
+        return lua55L_error(L, "too many results to unpack");
+    lua55_rawgeti(L, 1, i);
+    while (i++ < e)
+        lua55_rawgeti(L, 1, i);
+    return (int)n;
+}
+
+static int compat51_loadstring(lua_State *L) {
+    size_t l;
+    const char *s = lua55L_checklstring(L, 1, &l);
+    const char *chunkname = lua55L_optlstring(L, 2, s, NULL);
+    int status = lua55L_loadbufferx(L, s, l, chunkname, NULL);
+    if (status == LUA_OK) {
+        return 1;
+    } else {
+        lua55_pushnil(L);
+        lua55_rotate(L, -2, 1);
+        return 2;
+    }
+}
+
+static int compat51_gcinfo(lua_State *L) {
+    lua55_pushinteger(L, lua55_gc(L, LUA_GCCOUNT));
+    return 1;
+}
+
+/* ================================================================
  *  Standard library open functions
  * ================================================================ */
 
-int luaopen_base(lua_State *L)      { return lua55open_base(L); }
+int luaopen_base(lua_State *L) {
+    int r = lua55open_base(L);
+    lua55_pushcclosure(L, compat51_unpack, 0);
+    lua55_setfield(L, -2, "unpack");
+    lua55_pushcclosure(L, compat51_loadstring, 0);
+    lua55_setfield(L, -2, "loadstring");
+    lua55_pushcclosure(L, compat51_gcinfo, 0);
+    lua55_setfield(L, -2, "gcinfo");
+    return r;
+}
+
 int luaopen_package(lua_State *L)   { return lua55open_package(L); }
 int luaopen_coroutine(lua_State *L) { return lua55open_coroutine(L); }
-int luaopen_table(lua_State *L)     { return lua55open_table(L); }
+
+int luaopen_table(lua_State *L) {
+    int r = lua55open_table(L);
+    lua55L_setfuncs(L, compat51_tablib, 0);
+    return r;
+}
+
 int luaopen_io(lua_State *L)        { return lua55open_io(L); }
 int luaopen_os(lua_State *L)        { return lua55open_os(L); }
-int luaopen_string(lua_State *L)    { return lua55open_string(L); }
-int luaopen_math(lua_State *L)      { return lua55open_math(L); }
+
+int luaopen_string(lua_State *L) {
+    int r = lua55open_string(L);
+    lua55_getfield(L, -1, "gmatch");
+    lua55_setfield(L, -2, "gfind");
+    return r;
+}
+
+int luaopen_math(lua_State *L) {
+    int r = lua55open_math(L);
+    lua55L_setfuncs(L, compat51_mathlib, 0);
+    return r;
+}
+
 int luaopen_utf8(lua_State *L)      { return lua55open_utf8(L); }
 int luaopen_debug(lua_State *L)     { return lua55open_debug(L); }

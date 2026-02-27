@@ -667,6 +667,116 @@ TEST(openlibs) {
     return 0;
 }
 
+TEST(compat51_libs) {
+    /* Test unpack global */
+    if (luaL_dostring(L,
+        "local a,b,c = unpack({10,20,30})\n"
+        "assert(a == 10 and b == 20 and c == 30)\n"
+        "local x,y = unpack({5,6,7,8}, 2, 3)\n"
+        "assert(x == 6 and y == 7)\n"
+        "assert(unpack({}) == nil)\n") != 0) {
+        fprintf(stderr, "  unpack: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test loadstring global */
+    if (luaL_dostring(L,
+        "local f = loadstring('return 1+2')\n"
+        "assert(f() == 3)\n"
+        "local f2, err = loadstring('invalid $$$ syntax')\n"
+        "assert(f2 == nil and err ~= nil)\n") != 0) {
+        fprintf(stderr, "  loadstring: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test gcinfo global */
+    if (luaL_dostring(L,
+        "local n = gcinfo()\n"
+        "assert(type(n) == 'number' and n >= 0)\n") != 0) {
+        fprintf(stderr, "  gcinfo: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test math.atan2 */
+    if (luaL_dostring(L,
+        "assert(type(math.atan2) == 'function')\n"
+        "local v = math.atan2(1, 0)\n"
+        "assert(math.abs(v - math.pi/2) < 1e-10)\n") != 0) {
+        fprintf(stderr, "  math.atan2: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test math.cosh, sinh, tanh */
+    if (luaL_dostring(L,
+        "assert(type(math.cosh) == 'function')\n"
+        "assert(type(math.sinh) == 'function')\n"
+        "assert(type(math.tanh) == 'function')\n"
+        "assert(math.abs(math.cosh(0) - 1) < 1e-10)\n"
+        "assert(math.abs(math.sinh(0)) < 1e-10)\n"
+        "assert(math.abs(math.tanh(0)) < 1e-10)\n") != 0) {
+        fprintf(stderr, "  math.cosh/sinh/tanh: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test math.pow */
+    if (luaL_dostring(L,
+        "assert(math.pow(2, 10) == 1024)\n"
+        "assert(math.pow(3, 0) == 1)\n") != 0) {
+        fprintf(stderr, "  math.pow: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test math.log10 */
+    if (luaL_dostring(L,
+        "assert(math.abs(math.log10(1000) - 3) < 1e-10)\n"
+        "assert(math.abs(math.log10(1)) < 1e-10)\n") != 0) {
+        fprintf(stderr, "  math.log10: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test table.getn, table.maxn */
+    if (luaL_dostring(L,
+        "assert(table.getn({1,2,3}) == 3)\n"
+        "assert(table.getn({}) == 0)\n"
+        "assert(table.maxn({[1]=true, [5]=true, [3]=true}) == 5)\n"
+        "assert(table.maxn({}) == 0)\n") != 0) {
+        fprintf(stderr, "  table.getn/maxn: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test table.foreach, table.foreachi */
+    if (luaL_dostring(L,
+        "local sum = 0\n"
+        "table.foreachi({10,20,30}, function(i,v) sum = sum + v end)\n"
+        "assert(sum == 60)\n"
+        "local keys = {}\n"
+        "table.foreach({a=1, b=2}, function(k,v) keys[k] = v end)\n"
+        "assert(keys.a == 1 and keys.b == 2)\n") != 0) {
+        fprintf(stderr, "  table.foreach/foreachi: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test table.setn errors */
+    if (luaL_dostring(L,
+        "local ok = pcall(table.setn, {}, 5)\n"
+        "assert(not ok)\n") != 0) {
+        fprintf(stderr, "  table.setn: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    /* Test string.gfind alias */
+    if (luaL_dostring(L,
+        "assert(string.gfind == string.gmatch)\n"
+        "local t = {}\n"
+        "for w in string.gfind('hello world', '%a+') do t[#t+1] = w end\n"
+        "assert(t[1] == 'hello' and t[2] == 'world')\n") != 0) {
+        fprintf(stderr, "  string.gfind: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
+    return 0;
+}
+
 /* ===== Main ===== */
 
 int main(int argc, char *argv[]) {
@@ -808,6 +918,9 @@ int main(int argc, char *argv[]) {
 
     /* Standard libs */
     RUN(openlibs);
+
+    /* Lua 5.1 compat libs */
+    RUN(compat51_libs);
 
     printf("\nResults: %d C API test(s) failed\n", fails);
 #endif
