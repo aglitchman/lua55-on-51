@@ -15,6 +15,8 @@ target_include_directories(compat55 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/lua55
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+# Force forward-slash directory separator on all platforms (Lua 5.1 compat)
+target_compile_definitions(compat55 PRIVATE "LUA_DIRSEP=\"/\"")
 
 # Platform configuration
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
