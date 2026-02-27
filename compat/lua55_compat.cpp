@@ -666,27 +666,27 @@ int luaL_argerror(lua_State *L, int narg, const char *extramsg) {
 }
 
 lua_Integer luaL_checkinteger(lua_State *L, int arg) {
-    return lua55L_checkinteger(L, arg);
+    return lua55L_checkinteger(L, IS_PSEUDO51(arg) ? xidx(arg) : arg);
 }
 
 lua_Integer luaL_optinteger(lua_State *L, int arg, lua_Integer def) {
-    return lua55L_optinteger(L, arg, def);
+    return lua55L_optinteger(L, IS_PSEUDO51(arg) ? xidx(arg) : arg, def);
 }
 
 lua_Number luaL_checknumber(lua_State *L, int arg) {
-    return lua55L_checknumber(L, arg);
+    return lua55L_checknumber(L, IS_PSEUDO51(arg) ? xidx(arg) : arg);
 }
 
 lua_Number luaL_optnumber(lua_State *L, int arg, lua_Number def) {
-    return lua55L_optnumber(L, arg, def);
+    return lua55L_optnumber(L, IS_PSEUDO51(arg) ? xidx(arg) : arg, def);
 }
 
 const char *luaL_checklstring(lua_State *L, int arg, size_t *l) {
-    return lua55L_checklstring(L, arg, l);
+    return lua55L_checklstring(L, IS_PSEUDO51(arg) ? xidx(arg) : arg, l);
 }
 
 const char *luaL_optlstring(lua_State *L, int arg, const char *d, size_t *l) {
-    return lua55L_optlstring(L, arg, d, l);
+    return lua55L_optlstring(L, IS_PSEUDO51(arg) ? xidx(arg) : arg, d, l);
 }
 
 void luaL_checkstack(lua_State *L, int sz, const char *msg) {
@@ -694,11 +694,11 @@ void luaL_checkstack(lua_State *L, int sz, const char *msg) {
 }
 
 void luaL_checktype(lua_State *L, int arg, int t) {
-    lua55L_checktype(L, arg, t);
+    lua55L_checktype(L, IS_PSEUDO51(arg) ? xidx(arg) : arg, t);
 }
 
 void luaL_checkany(lua_State *L, int arg) {
-    lua55L_checkany(L, arg);
+    lua55L_checkany(L, IS_PSEUDO51(arg) ? xidx(arg) : arg);
 }
 
 int luaL_newmetatable(lua_State *L, const char *tname) {
@@ -825,9 +825,20 @@ void luaL_addvalue(void *B_raw) {
     struct lua51_Buffer *B = (struct lua51_Buffer *)B_raw;
     size_t vl;
     const char *s = lua55_tolstring(B->L, -1, &vl);
-    buf_flush(B);
-    /* the value is now on top, above accumulated strings */
-    B->lvl++;
+    size_t space = (size_t)(LUA51_BUFFERSIZE - (B->p - B->buffer));
+    if (vl <= space) {
+        /* fits in buffer: copy and pop */
+        memcpy(B->p, s, vl);
+        B->p += vl;
+        lua55_settop(B->L, -2);
+    } else {
+        int old_lvl = B->lvl;
+        buf_flush(B);
+        /* if buf_flush pushed a string, it's above value; move it below */
+        if (B->lvl > old_lvl)
+            lua55_insert(B->L, -2);
+        B->lvl++;
+    }
 }
 
 void luaL_pushresult(void *B_raw) {
