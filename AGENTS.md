@@ -68,6 +68,8 @@ make compat-test-lua55       # produces compat_tests/test_lua55
 
 ### Luau VM Patches (REQUIRED)
 
+Patches are based on Luau commit `b968ef74` (release/709).
+
 Luau's type enum includes `LUA_TVECTOR` which shifts `LUA_TSTRING` through `LUA_TTHREAD` by +1 compared to Lua 5.1. Three files in the Luau VM must be patched:
 
 1. **`luau/VM/include/lua.h`** — Move `LUA_TVECTOR` from between `LUA_TNUMBER` and `LUA_TSTRING` to after `LUA_TBUFFER`. This makes `LUA_TSTRING=4`, `LUA_TTABLE=5`, etc., matching Lua 5.1 exactly.
