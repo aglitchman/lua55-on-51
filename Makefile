@@ -27,6 +27,9 @@ COMPAT_LIB = $(COMPAT_DIR)/libcompat.a
 COMPAT_RUNTIME_LIB = $(COMPAT_DIR)/libcompat_runtime.a
 COMPAT55_LIB = $(COMPAT_DIR)/libcompat55.a
 
+LUTF8_SRC = compat_tests/lua_utf8/lutf8lib.c
+LUTF8_OBJ = compat_tests/lua_utf8/lutf8lib.o
+
 .PHONY: all lua51-lib lua55-lib lua55 luau-lib compat-lib compat-runtime-lib compat55-lib \
         compat-test-lua51 compat-test-lua55 compat-test-luau compat-test-luau-runtime precompile clean
 
@@ -58,7 +61,8 @@ compat-lib: luau-lib
 	ar rcs $(COMPAT_LIB) $(COMPAT_DIR)/luau_bridge.o $(COMPAT_DIR)/lua51_compat.o
 
 compat-test-lua51: lua51-lib
-	$(CC) $(CFLAGS) -I$(LUA51_SRC) compat_tests/main.c $(LUA51_LIB) -lm -ldl -o compat_tests/test_lua51
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) -c $(LUTF8_SRC) -o $(LUTF8_OBJ)
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) compat_tests/main.c $(LUTF8_OBJ) $(LUA51_LIB) -lm -ldl -o compat_tests/test_lua51
 
 # Lua 5.5 compat library
 compat55-lib: lua55-lib
@@ -72,10 +76,12 @@ compat55-lib: lua55-lib
 
 # Example built with Lua 5.5
 compat-test-lua55: lua55-lib compat55-lib
-	$(CC) $(CFLAGS) -I$(LUA51_SRC) compat_tests/main.c $(COMPAT55_LIB) -lm -ldl -o compat_tests/test_lua55
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) -c $(LUTF8_SRC) -o $(LUTF8_OBJ)
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) compat_tests/main.c $(LUTF8_OBJ) $(COMPAT55_LIB) -lm -ldl -o compat_tests/test_lua55
 
 compat-test-luau: compat-lib
-	$(CXX) $(CFLAGS_RELEASE) -I$(LUA51_SRC) compat_tests/main.c $(COMPAT_LIB) $(LUAU_LIBS) -lm -lpthread -o compat_tests/test_luau
+	$(CC) $(CFLAGS_RELEASE) -I$(LUA51_SRC) -c $(LUTF8_SRC) -o $(LUTF8_OBJ)
+	$(CXX) $(CFLAGS_RELEASE) -I$(LUA51_SRC) compat_tests/main.c $(LUTF8_OBJ) $(COMPAT_LIB) $(LUAU_LIBS) -lm -lpthread -o compat_tests/test_luau
 
 # Runtime-only compat (no compiler/AST)
 compat-runtime-lib: luau-lib
@@ -103,13 +109,14 @@ precompile: luau-lib
 	done
 
 compat-test-luau-runtime: compat-runtime-lib precompile
-	$(CXX) $(CFLAGS_RELEASE) -DLUAU_RUNTIME_ONLY -I$(LUA51_SRC) compat_tests/main.c \
+	$(CC) $(CFLAGS_RELEASE) -I$(LUA51_SRC) -c $(LUTF8_SRC) -o $(LUTF8_OBJ)
+	$(CXX) $(CFLAGS_RELEASE) -DLUAU_RUNTIME_ONLY -I$(LUA51_SRC) compat_tests/main.c $(LUTF8_OBJ) \
 		$(COMPAT_RUNTIME_LIB) $(LUAU_RUNTIME_LIBS) -lm -lpthread -o compat_tests/test_luau_runtime
 
 clean:
 	$(MAKE) -C $(LUA51_DIR) clean
 	$(MAKE) -C $(LUA55_DIR) clean
 	$(MAKE) -C $(LUAU_DIR) clean
-	rm -f $(COMPAT_DIR)/*.o $(COMPAT_LIB) $(COMPAT_RUNTIME_LIB)
+	rm -f $(COMPAT_DIR)/*.o $(COMPAT_LIB) $(COMPAT_RUNTIME_LIB) $(LUTF8_OBJ)
 	rm -f compat_tests/test_lua51 compat_tests/test_lua51 compat_tests/test_luau compat_tests/test_luau_runtime
 	find compat_tests/tests compat_tests/shims -name '*.luac' -delete 2>/dev/null || true

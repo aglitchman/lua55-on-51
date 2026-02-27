@@ -1,6 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <direct.h>
+#define getcwd _getcwd
+#define chdir _chdir
+#else
+#include <unistd.h>
+#endif
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -12,6 +19,8 @@
     if (test_##name(L) == 0) printf("OK\n"); \
     else { printf("FAIL\n"); fails++; } \
 } while(0)
+
+extern int lutf8lib_open(lua_State *L);
 
 static int l_loadfile(lua_State *L) {
     const char *filename = luaL_checkstring(L, 1);
@@ -804,6 +813,10 @@ int main(int argc, char *argv[]) {
     }
     luaL_openlibs(L);
 
+    /* Register lua-utf8 library as global "utf8" */
+    lutf8lib_open(L);
+    lua_setglobal(L, "utf8");
+
     /* Ensure package/require is available (Luau build needs this) */
     lua_getglobal(L, "require");
     if (lua_isnil(L, -1)) {
@@ -1033,6 +1046,50 @@ int main(int argc, char *argv[]) {
         if (luaL_dofile(L, filepath) != 0) {
             printf("  FAIL: %s\n", lua_tostring(L, -1));
             lua_pop(L, 1);
+            fails++;
+        }
+    }
+
+    /* ===== lua-utf8 tests ===== */
+    printf("\nRunning lua-utf8 tests:\n");
+    {
+        char basedir[512] = "";
+        if (argv[0]) {
+            const char *last_sep = strrchr(argv[0], '/');
+            if (last_sep) {
+                size_t len = (size_t)(last_sep - argv[0] + 1);
+                if (len < sizeof(basedir)) {
+                    memcpy(basedir, argv[0], len);
+                    basedir[len] = '\0';
+                }
+            }
+        }
+
+        /* test.lua opens NormalizationTest.txt with a relative path,
+           so we need to set the working directory to lua_utf8/ */
+        char utf8dir[512];
+        snprintf(utf8dir, sizeof(utf8dir), "%slua_utf8", basedir);
+
+        char oldcwd[512];
+        if (getcwd(oldcwd, sizeof(oldcwd)) && chdir(utf8dir) == 0) {
+            const char *utf8_tests[] = {
+                "test.lua",
+                "test_compat.lua",
+                "test_pm.lua",
+                NULL
+            };
+
+            for (int i = 0; utf8_tests[i]; i++) {
+                printf("  Loading %s/%s\n", utf8dir, utf8_tests[i]);
+                if (luaL_dofile(L, utf8_tests[i]) != 0) {
+                    printf("  FAIL: %s\n", lua_tostring(L, -1));
+                    lua_pop(L, 1);
+                    fails++;
+                }
+            }
+            chdir(oldcwd);
+        } else {
+            printf("  FAIL: cannot chdir to %s\n", utf8dir);
             fails++;
         }
     }
