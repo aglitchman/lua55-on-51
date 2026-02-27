@@ -9,3 +9,9 @@ compat_tests/test_lua51
 compat_tests/test_lua55
 compat_tests/test_luau
 compat_tests/test_luau_runtime
+
+# CMake
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
