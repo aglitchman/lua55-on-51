@@ -774,6 +774,20 @@ TEST(compat51_libs) {
         lua_pop(L, 1); return 1;
     }
 
+    /* Test tostring: Lua 5.1 style (no trailing ".0" for integral floats) */
+    if (luaL_dostring(L,
+        "assert(tostring(2.0) == '2', 'expected \"2\" got \"' .. tostring(2.0) .. '\"')\n"
+        "assert(tostring(0.0) == '0', 'expected \"0\" got \"' .. tostring(0.0) .. '\"')\n"
+        "assert(tostring(100.0) == '100')\n"
+        "assert(tostring(1.5) == '1.5')\n"
+        "assert(tostring(3.14) == '3.14')\n"
+        "assert(tostring(true) == 'true')\n"
+        "assert(tostring(nil) == 'nil')\n"
+        "assert(tostring('hello') == 'hello')\n") != 0) {
+        fprintf(stderr, "  tostring: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); return 1;
+    }
+
     return 0;
 }
 
