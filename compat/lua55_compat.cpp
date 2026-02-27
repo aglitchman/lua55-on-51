@@ -619,8 +619,14 @@ void luaL_register(lua_State *L, const char *libname, const luaL_Reg *l) {
 
 void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup) {
     if (libname) {
-        lua55_createtable(L, 0, 0);
-        lua55L_setfuncs(L, l, nup);
+        /* reuse existing global table or create a new one */
+        lua55_getglobal(L, libname);
+        if (lua55_type(L, -1) != LUA_TTABLE) {
+            lua55_settop(L, -2);         /* pop non-table */
+            lua55_createtable(L, 0, 0);
+        }
+        lua55_insert(L, -(nup + 1));     /* move table below upvalues */
+        lua55L_setfuncs(L, l, nup);      /* register funcs (pops upvalues) */
         lua55_pushvalue(L, -1);
         lua55_setglobal(L, libname);
     } else {
