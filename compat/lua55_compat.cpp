@@ -617,7 +617,7 @@ void luaL_register(lua_State *L, const char *libname, const luaL_Reg *l) {
     }
 }
 
-void luaI_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup) {
+void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup) {
     if (libname) {
         lua55_createtable(L, 0, 0);
         lua55L_setfuncs(L, l, nup);
