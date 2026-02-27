@@ -815,7 +815,7 @@ int main(int argc, char *argv[]) {
     /* ===== Lua file tests ===== */
     printf("\nRunning Lua file tests:\n");
     {
-        /* Compute base dir from argv[0] (e.g. "example/test_lua51" -> "example/") */
+        /* Compute base dir from argv[0] (e.g. "compat_tests/test_lua51" -> "compat_tests/") */
         char basedir[512] = "";
         if (argv[0]) {
             const char *last_sep = strrchr(argv[0], '/');
@@ -828,19 +828,19 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        /* Set package.path with root dir tests/lume */
+        /* Set package.path with root dir lua_tests/lume */
         char pathval[1024];
         snprintf(pathval, sizeof(pathval),
-            "%stests/lume/?.lua;%stests/lume/?/init.lua",
+            "%slua_tests/lume/?.lua;%slua_tests/lume/?/init.lua",
             basedir, basedir);
         lua_getglobal(L, "package");
         lua_pushstring(L, pathval);
         lua_setfield(L, -2, "path");
         lua_pop(L, 1);
 
-        /* Run tests/lume/test.lua */
+        /* Run lua_tests/lume/test.lua */
         char filepath[512];
-        snprintf(filepath, sizeof(filepath), "%stests/lume/test.lua", basedir);
+        snprintf(filepath, sizeof(filepath), "%slua_tests/lume/test.lua", basedir);
 
         printf("  Loading %s\n", filepath);
         if (luaL_dofile(L, filepath) != 0) {
@@ -851,8 +851,8 @@ int main(int argc, char *argv[]) {
 
         /* json.lua: set package.path and loadfile for relative paths */
         snprintf(pathval, sizeof(pathval),
-            "%stests/json.lua/?.lua;%stests/json.lua/bench/?.lua;"
-            "%stests/json.lua/bench/?/init.lua",
+            "%slua_tests/json.lua/?.lua;%slua_tests/json.lua/bench/?.lua;"
+            "%slua_tests/json.lua/bench/?/init.lua",
             basedir, basedir, basedir);
         lua_getglobal(L, "package");
         lua_pushstring(L, pathval);
@@ -862,7 +862,7 @@ int main(int argc, char *argv[]) {
         /* Override loadfile to search json.lua subdirs */
         {
             char jsonbase[512];
-            snprintf(jsonbase, sizeof(jsonbase), "%stests/json.lua/", basedir);
+            snprintf(jsonbase, sizeof(jsonbase), "%slua_tests/json.lua/", basedir);
             lua_pushstring(L, jsonbase);
             lua_setglobal(L, "_json_basedir");
 
@@ -873,7 +873,7 @@ int main(int argc, char *argv[]) {
                 char setupcode[2048];
                 snprintf(setupcode, sizeof(setupcode),
                     "do\n"
-                    "  local bd = \"%stests/json.lua/\"\n"
+                    "  local bd = \"%slua_tests/json.lua/\"\n"
                     "  local real_loadfile = loadfile\n"
                     "  local dirs = { bd .. \"test/\", bd .. \"bench/\", bd }\n"
                     "  loadfile = function(name)\n"
@@ -891,7 +891,7 @@ int main(int argc, char *argv[]) {
 
         /* Run json.lua test */
         snprintf(filepath, sizeof(filepath),
-            "%stests/json.lua/test/test.lua", basedir);
+            "%slua_tests/json.lua/test/test.lua", basedir);
         printf("  Loading %s\n", filepath);
         if (luaL_dofile(L, filepath) != 0) {
             printf("  FAIL: %s\n", lua_tostring(L, -1));
@@ -902,7 +902,7 @@ int main(int argc, char *argv[]) {
         /* Run json.lua bench */
         printf("\n  Running json.lua benchmarks:\n");
         snprintf(filepath, sizeof(filepath),
-            "%stests/json.lua/bench/bench_all.lua", basedir);
+            "%slua_tests/json.lua/bench/bench_all.lua", basedir);
         if (luaL_dofile(L, filepath) != 0) {
             printf("  FAIL: %s\n", lua_tostring(L, -1));
             lua_pop(L, 1);

@@ -12,7 +12,7 @@
 
 ## Principle
 
-**`example/main.c` includes ONLY standard Lua 5.1 header names** (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. Both builds use the same headers (`-Ilua51/src`). The only difference is which libraries are linked.
+**`compat_tests/main.c` includes ONLY standard Lua 5.1 header names** (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. Both builds use the same headers (`-Ilua51/src`). The only difference is which libraries are linked.
 
 - **Lua 5.1 build:** `-Ilua51/src`, link `liblua.a` from lua51
 - **Lua 5.5 build:** `-Ilua51/src`, link `libcompat55.a` + `lua55/liblua.a`
@@ -391,8 +391,8 @@ compat55-lib: lua55-lib
 	g++ -c -I$(LUA55_DIR) -I$(LUA51_SRC) compat/lua55_compat.cpp -o compat/lua55_compat.o
 	ar rcs compat/libcompat55.a compat/lua55_compat.o
 
-example-lua55: lua55-lib compat55-lib
-	$(CC) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(COMPAT55_LIB) $(LUA55_LIB) -lm -ldl -o example/test_lua55
+compat-test-lua55: lua55-lib compat55-lib
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) compat_tests/main.c $(COMPAT55_LIB) $(LUA55_LIB) -lm -ldl -o compat_tests/test_lua55
 ```
 
 ---
@@ -429,7 +429,7 @@ ext_luau/
 │   ├── lua55_compat.cpp     # Lua 5.5 compat for 5.1 API
 │   ├── libcompat.a          # Luau compat lib
 │   └── libcompat55.a        # Lua 5.5 compat lib
-└── example/
+└── compat_tests/
     └── main.c        # Test app using ONLY Lua 5.1 headers
 ```
 

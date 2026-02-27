@@ -17,7 +17,7 @@
 
 ## Phase 2: Create Example App Using Lua 5.1 C API (Defold Subset)
 
-Create `example/main.c` — a single C file that exercises the Lua 5.1 C API functions **actually used by the Defold engine**. Functions not used by Defold will only have stubs in the compat layer, so there is no need to test them thoroughly — just verify they compile.
+Create `compat_tests/main.c` — a single C file that exercises the Lua 5.1 C API functions **actually used by the Defold engine**. Functions not used by Defold will only have stubs in the compat layer, so there is no need to test them thoroughly — just verify they compile.
 
 ### From `lua.h` — Core API functions to exercise:
 
@@ -89,17 +89,17 @@ Create `example/main.c` — a single C file that exercises the Lua 5.1 C API fun
 Create a root `Makefile` with targets:
 - `lua51-lib` — builds `lua51/src/liblua.a`
 - `luau-lib` — builds Luau static libraries
-- `example-lua51` — compiles `example/main.c` and links against `lua51/src/liblua.a`
-- `example-luau` — compiles `example/main.c` and links against Luau static libs + compat layer
+- `compat-test-lua51` — compiles `compat_tests/main.c` and links against `lua51/src/liblua.a`
+- `compat-test-luau` — compiles `compat_tests/main.c` and links against Luau static libs + compat layer
 - `clean`
 
-Run `make example-lua51` and verify it works.
+Run `make compat-test-lua51` and verify it works.
 
 ---
 
 ## Phase 3: Try Building Example with Luau
 
-Run `make example-luau` and collect all compile/link errors. These errors reveal the missing API surface.
+Run `make compat-test-luau` and collect all compile/link errors. These errors reveal the missing API surface.
 
 ---
 
@@ -210,7 +210,7 @@ Create **external** files (DO NOT modify Luau sources):
 - Apply Luau VM patches: `./patches/apply_luau_patches.sh` (reorders type enum to match Lua 5.1)
 - Rebuild Luau: `make -C luau clean && make -C luau`
 - Build compat layer: `make compat-lib` (compiles `luau_bridge.cpp` + `lua51_compat.cpp` → `libcompat.a`)
-- Build example: `make example-luau` (`-Ilua51/src`, links `libcompat.a` + Luau libs)
+- Build example: `make compat-test-luau` (`-Ilua51/src`, links `libcompat.a` + Luau libs)
 - `main.c` includes only `lua.h`, `lauxlib.h`, `lualib.h` — no `#ifdef`, no compat-specific includes
 - Run and verify all tests pass identically to the Lua 5.1 version
 
@@ -218,7 +218,7 @@ Create **external** files (DO NOT modify Luau sources):
 
 ## Architecture: Drop-in Replacement via Two-File Compat Library
 
-**Key principle:** `example/main.c` includes ONLY standard Lua 5.1 header names (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. Both builds use the same headers (`-Ilua51/src`). The only difference is which libraries are linked.
+**Key principle:** `compat_tests/main.c` includes ONLY standard Lua 5.1 header names (`lua.h`, `lauxlib.h`, `lualib.h`) without any `#ifdef` or compat-specific includes. Both builds use the same headers (`-Ilua51/src`). The only difference is which libraries are linked.
 
 - **Lua 5.1 build:** `-Ilua51/src`, link `liblua.a`
 - **Luau build:** `-Ilua51/src`, link `libcompat.a` + Luau `.a` files
@@ -255,6 +255,6 @@ ext_luau/
 │   ├── luau_bridge.cpp       # Luau-side bridges (compiled with Luau headers)
 │   ├── lua51_compat.cpp      # Lua 5.1 API shim (compiled with Lua 5.1 headers)
 │   └── libcompat.a           # Built static library
-└── example/
+└── compat_tests/
     └── main.c                # Test app using ONLY standard Lua 5.1 headers
 ```

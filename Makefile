@@ -28,9 +28,9 @@ COMPAT_RUNTIME_LIB = $(COMPAT_DIR)/libcompat_runtime.a
 COMPAT55_LIB = $(COMPAT_DIR)/libcompat55.a
 
 .PHONY: all lua51-lib lua55-lib lua55 luau-lib compat-lib compat-runtime-lib compat55-lib \
-        example-lua51 example-lua55 example-luau example-luau-runtime precompile clean
+        compat-test-lua51 compat-test-lua55 compat-test-luau compat-test-luau-runtime precompile clean
 
-all: example-lua51 example-luau precompile example-luau-runtime
+all: compat-test-lua51 compat-test-luau precompile compat-test-luau-runtime
 
 lua51-lib:
 	$(MAKE) -C $(LUA51_SRC) a MYCFLAGS="-DLUA_USE_LINUX"
@@ -57,8 +57,8 @@ compat-lib: luau-lib
 		-o $(COMPAT_DIR)/lua51_compat.o
 	ar rcs $(COMPAT_LIB) $(COMPAT_DIR)/luau_bridge.o $(COMPAT_DIR)/lua51_compat.o
 
-example-lua51: lua51-lib
-	$(CC) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(LUA51_LIB) -lm -ldl -o example/test_lua51
+compat-test-lua51: lua51-lib
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) compat_tests/main.c $(LUA51_LIB) -lm -ldl -o compat_tests/test_lua51
 
 # Lua 5.5 compat library
 compat55-lib: lua55-lib
@@ -71,11 +71,11 @@ compat55-lib: lua55-lib
 	rm -f *.o
 
 # Example built with Lua 5.5
-example-lua55: lua55-lib compat55-lib
-	$(CC) $(CFLAGS) -I$(LUA51_SRC) example/main.c $(COMPAT55_LIB) -lm -ldl -o example/test_lua55
+compat-test-lua55: lua55-lib compat55-lib
+	$(CC) $(CFLAGS) -I$(LUA51_SRC) compat_tests/main.c $(COMPAT55_LIB) -lm -ldl -o compat_tests/test_lua55
 
-example-luau: compat-lib
-	$(CXX) $(CFLAGS_RELEASE) -I$(LUA51_SRC) example/main.c $(COMPAT_LIB) $(LUAU_LIBS) -lm -lpthread -o example/test_luau
+compat-test-luau: compat-lib
+	$(CXX) $(CFLAGS_RELEASE) -I$(LUA51_SRC) compat_tests/main.c $(COMPAT_LIB) $(LUAU_LIBS) -lm -lpthread -o compat_tests/test_luau
 
 # Runtime-only compat (no compiler/AST)
 compat-runtime-lib: luau-lib
@@ -93,23 +93,23 @@ compat-runtime-lib: luau-lib
 # Precompile all .lua to .luac bytecode
 precompile: luau-lib
 	@echo "Precompiling Lua files to bytecode..."
-	@find example/tests -name '*.lua' | while read f; do \
+	@find compat_tests/tests -name '*.lua' | while read f; do \
 		$(LUAU_COMPILE) --binary -O2 "$$f" > "$${f}c" && \
 		echo "  $$f -> $${f}c"; \
 	done
-	@find example/shims -name '*.lua' | while read f; do \
+	@find compat_tests/shims -name '*.lua' | while read f; do \
 		$(LUAU_COMPILE) --binary -O2 "$$f" > "$${f}c" && \
 		echo "  $$f -> $${f}c"; \
 	done
 
-example-luau-runtime: compat-runtime-lib precompile
-	$(CXX) $(CFLAGS_RELEASE) -DLUAU_RUNTIME_ONLY -I$(LUA51_SRC) example/main.c \
-		$(COMPAT_RUNTIME_LIB) $(LUAU_RUNTIME_LIBS) -lm -lpthread -o example/test_luau_runtime
+compat-test-luau-runtime: compat-runtime-lib precompile
+	$(CXX) $(CFLAGS_RELEASE) -DLUAU_RUNTIME_ONLY -I$(LUA51_SRC) compat_tests/main.c \
+		$(COMPAT_RUNTIME_LIB) $(LUAU_RUNTIME_LIBS) -lm -lpthread -o compat_tests/test_luau_runtime
 
 clean:
 	$(MAKE) -C $(LUA51_DIR) clean
 	$(MAKE) -C $(LUA55_DIR) clean
 	$(MAKE) -C $(LUAU_DIR) clean
 	rm -f $(COMPAT_DIR)/*.o $(COMPAT_LIB) $(COMPAT_RUNTIME_LIB)
-	rm -f example/test_lua51 example/test_lua51 example/test_luau example/test_luau_runtime
-	find example/tests example/shims -name '*.luac' -delete 2>/dev/null || true
+	rm -f compat_tests/test_lua51 compat_tests/test_lua51 compat_tests/test_luau compat_tests/test_luau_runtime
+	find compat_tests/tests compat_tests/shims -name '*.luac' -delete 2>/dev/null || true
