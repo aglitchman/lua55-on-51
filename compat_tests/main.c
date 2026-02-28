@@ -378,6 +378,79 @@ TEST(concat) {
     return 0;
 }
 
+TEST(number_tostring_no_dot_zero) {
+    /* C API: lua_pushnumber + lua_tostring should not add ".0" */
+    lua_pushnumber(L, 1.0);
+    const char *s = lua_tostring(L, -1);
+    if (!s || strcmp(s, "1") != 0) {
+        printf("(expected \"1\", got \"%s\") ", s ? s : "(null)");
+        lua_pop(L, 1);
+        return 1;
+    }
+    lua_pop(L, 1);
+
+    lua_pushnumber(L, 0.0);
+    s = lua_tostring(L, -1);
+    if (!s || strcmp(s, "0") != 0) {
+        printf("(expected \"0\", got \"%s\") ", s ? s : "(null)");
+        lua_pop(L, 1);
+        return 1;
+    }
+    lua_pop(L, 1);
+
+    lua_pushnumber(L, 100.0);
+    s = lua_tostring(L, -1);
+    if (!s || strcmp(s, "100") != 0) {
+        printf("(expected \"100\", got \"%s\") ", s ? s : "(null)");
+        lua_pop(L, 1);
+        return 1;
+    }
+    lua_pop(L, 1);
+
+    /* Non-integer floats should still have decimal part */
+    lua_pushnumber(L, 1.5);
+    s = lua_tostring(L, -1);
+    if (!s || strcmp(s, "1.5") != 0) {
+        printf("(expected \"1.5\", got \"%s\") ", s ? s : "(null)");
+        lua_pop(L, 1);
+        return 1;
+    }
+    lua_pop(L, 1);
+
+    /* Lua code: concatenation with integer-valued float */
+    if (luaL_dostring(L,
+        "local a = 1.0\n"
+        "local r = 'a' .. a\n"
+        "assert(r == 'a1', 'expected \"a1\", got \"' .. r .. '\"')\n") != 0) {
+        printf("(concat: %s) ", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return 1;
+    }
+
+    /* Lua code: tostring of integer-valued float */
+    if (luaL_dostring(L,
+        "assert(tostring(1.0) == '1', 'tostring(1.0)=\"' .. tostring(1.0) .. '\"')\n"
+        "assert(tostring(0.0) == '0', 'tostring(0.0)=\"' .. tostring(0.0) .. '\"')\n"
+        "assert(tostring(100.0) == '100')\n"
+        "assert(tostring(1.5) == '1.5')\n"
+        "assert(tostring(-1.0) == '-1')\n") != 0) {
+        printf("(tostring: %s) ", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return 1;
+    }
+
+    /* Lua code: string.format %s with number */
+    if (luaL_dostring(L,
+        "local r = string.format('%s', 2.0)\n"
+        "assert(r == '2', 'format got \"' .. r .. '\"')\n") != 0) {
+        printf("(format: %s) ", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return 1;
+    }
+
+    return 0;
+}
+
 TEST(getallocf) {
     void *ud;
     lua_Alloc f = lua_getallocf(L, &ud);
@@ -920,6 +993,7 @@ int main(int argc, char *argv[]) {
     RUN(error_handling);
     RUN(next);
     RUN(concat);
+    RUN(number_tostring_no_dot_zero);
     RUN(getallocf);
     RUN(macros);
 

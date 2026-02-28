@@ -639,7 +639,7 @@ void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup)
 static int compat51_unpack(lua_State *L);
 static int compat51_loadstring(lua_State *L);
 static int compat51_gcinfo(lua_State *L);
-static int compat51_tostring(lua_State *L);
+// static int compat51_tostring(lua_State *L);
 
 int luaL_getmetafield(lua_State *L, int obj, const char *e) {
     return lua55L_getmetafield(L, IS_PSEUDO51(obj) ? xidx(obj) : obj, e);
@@ -982,8 +982,8 @@ void luaL_openlibs(lua_State *L) {
     lua55_setfield(L, -2, "loadstring");
     lua55_pushcclosure(L, compat51_gcinfo, 0);
     lua55_setfield(L, -2, "gcinfo");
-    lua55_pushcclosure(L, compat51_tostring, 0);
-    lua55_setfield(L, -2, "tostring");
+    // lua55_pushcclosure(L, compat51_tostring, 0);
+    // lua55_setfield(L, -2, "tostring");
     lua55_pop(L, 1);
     /* math */
     lua55_getglobal(L, "math");
@@ -1039,18 +1039,18 @@ static int compat51_gcinfo(lua_State *L) {
     return 1;
 }
 
-static int compat51_tostring(lua_State *L) {
-    lua55L_checkany(L, 1);
-    if (lua55_type(L, 1) == LUA_TNUMBER) {
-        /* Lua 5.1 format: %.14g — no trailing ".0" for integral floats */
-        char buf[64];
-        snprintf(buf, sizeof(buf), "%.14g", (double)lua55_tonumberx(L, 1, NULL));
-        lua55_pushstring(L, buf);
-    } else {
-        lua55L_tolstring(L, 1, NULL);
-    }
-    return 1;
-}
+// static int compat51_tostring(lua_State *L) {
+//     lua55L_checkany(L, 1);
+//     if (lua55_type(L, 1) == LUA_TNUMBER) {
+//         /* Lua 5.1 format: %.14g — no trailing ".0" for integral floats */
+//         char buf[64];
+//         snprintf(buf, sizeof(buf), "%.14g", (double)lua55_tonumberx(L, 1, NULL));
+//         lua55_pushstring(L, buf);
+//     } else {
+//         lua55L_tolstring(L, 1, NULL);
+//     }
+//     return 1;
+// }
 
 /* ================================================================
  *  Standard library open functions
@@ -1064,8 +1064,8 @@ int luaopen_base(lua_State *L) {
     lua55_setfield(L, -2, "loadstring");
     lua55_pushcclosure(L, compat51_gcinfo, 0);
     lua55_setfield(L, -2, "gcinfo");
-    lua55_pushcclosure(L, compat51_tostring, 0);
-    lua55_setfield(L, -2, "tostring");
+    // lua55_pushcclosure(L, compat51_tostring, 0);
+    // lua55_setfield(L, -2, "tostring");
     return r;
 }
 

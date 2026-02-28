@@ -434,11 +434,15 @@ static int tostringbuffFloat (lua_Number n, char *buff) {
     len = l_sprintf(buff, LUA_N2SBUFFSZ, LUA_NUMBER_FMT_N,
                           (LUAI_UACNUMBER)n);
   }
+  // LUA51 PATCH START — don't append ".0" to integer-looking floats (Lua 5.1 compat)
+#if 0
   /* looks like an integer? */
   if (buff[strspn(buff, "-0123456789")] == '\0') {
     buff[len++] = lua_getlocaledecpoint();
     buff[len++] = '0';  /* adds '.0' to result */
   }
+#endif
+  // LUA51 PATCH END
   return len;
 }
 
